@@ -9,7 +9,7 @@ use context::ContextManager;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("KOTA - Type '/quit' to exit.");
-    println!("Commands: /add_file <path>, /add_snippet <text>, /show_context, /clear_context, /run <command>, /run_add <command>");
+    println!("Commands: /add_file <path>, /add_snippet <text>, /show_context, /clear_context, /run <command>, /run_add <command>, /git_add <file_path>, /git_commit \"<message>\", /git_status, /git_diff [<path>]");
     
     let mut context_manager = ContextManager::new();
 
@@ -97,6 +97,160 @@ async fn main() -> anyhow::Result<()> {
                             Err(e) => {
                                 eprintln!("Failed to execute command '{}': {}", arg, e);
                             }
+                        }
+                    }
+                }
+                "/git_add" => {
+                    if arg.is_empty() {
+                        println!("Usage: /git_add <file_path>");
+                    } else {
+                        println!("Executing: git add {}", arg);
+                        let output = Command::new("git")
+                            .arg("add")
+                            .arg(arg)
+                            .output();
+                        
+                        match output {
+                            Ok(out) => {
+                                // Always print stdout
+                                let stdout_str = String::from_utf8_lossy(&out.stdout);
+                                if !stdout_str.trim().is_empty() {
+                                    println!("--- stdout ---\n{}\n--- end stdout ---", stdout_str.trim());
+                                }
+                                
+                                // Print stderr if not empty
+                                let stderr_str = String::from_utf8_lossy(&out.stderr);
+                                if !stderr_str.trim().is_empty() {
+                                    eprintln!("--- stderr ---\n{}\n--- end stderr ---", stderr_str.trim());
+                                }
+                                
+                                // Show exit status if not successful
+                                if out.status.success() {
+                                    println!("Successfully added {}", arg);
+                                } else {
+                                    eprintln!("Git add failed with status: {}", out.status);
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to execute git add: {}", e);
+                            }
+                        }
+                    }
+                }
+                "/git_commit" => {
+                    if arg.is_empty() {
+                        println!("Usage: /git_commit \"<commit_message>\"");
+                    } else {
+                        println!("Executing: git commit -m \"{}\"", arg);
+                        let output = Command::new("git")
+                            .arg("commit")
+                            .arg("-m")
+                            .arg(arg)
+                            .output();
+                        
+                        match output {
+                            Ok(out) => {
+                                // Always print stdout
+                                let stdout_str = String::from_utf8_lossy(&out.stdout);
+                                if !stdout_str.trim().is_empty() {
+                                    println!("--- stdout ---\n{}\n--- end stdout ---", stdout_str.trim());
+                                }
+                                
+                                // Print stderr if not empty
+                                let stderr_str = String::from_utf8_lossy(&out.stderr);
+                                if !stderr_str.trim().is_empty() {
+                                    eprintln!("--- stderr ---\n{}\n--- end stderr ---", stderr_str.trim());
+                                }
+                                
+                                // Show exit status if not successful
+                                if out.status.success() {
+                                    println!("Successfully committed changes with message: \"{}\"", arg);
+                                } else {
+                                    eprintln!("Git commit failed with status: {}", out.status);
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to execute git commit: {}", e);
+                            }
+                        }
+                    }
+                }
+                "/git_status" => {
+                    println!("Executing: git status");
+                    // Run basic git status
+                    let output = Command::new("git")
+                        .arg("status")
+                        .output();
+                    
+                    match output {
+                        Ok(out) => {
+                            // Always print stdout
+                            let stdout_str = String::from_utf8_lossy(&out.stdout);
+                            if !stdout_str.trim().is_empty() {
+                                println!("--- git status ---\n{}\n--- end git status ---", stdout_str.trim());
+                            } else {
+                                println!("No status information available");
+                            }
+                            
+                            // Print stderr if not empty
+                            let stderr_str = String::from_utf8_lossy(&out.stderr);
+                            if !stderr_str.trim().is_empty() {
+                                eprintln!("--- stderr ---\n{}\n--- end stderr ---", stderr_str.trim());
+                            }
+                            
+                            // Show exit status if not successful
+                            if !out.status.success() {
+                                eprintln!("Git status failed with status: {}", out.status);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to execute git status: {}", e);
+                        }
+                    }
+                }
+                "/git_diff" => {
+                    // Handle optional path argument
+                    let cmd_str = if arg.is_empty() {
+                        "git diff".to_string()
+                    } else {
+                        format!("git diff {}", arg)
+                    };
+                    
+                    println!("Executing: {}", cmd_str);
+                    
+                    // Using Command with args to avoid shell escaping issues
+                    let mut command = Command::new("git");
+                    command.arg("diff");
+                    
+                    if !arg.is_empty() {
+                        command.arg(arg);
+                    }
+                    
+                    let output = command.output();
+                    
+                    match output {
+                        Ok(out) => {
+                            // Always print stdout
+                            let stdout_str = String::from_utf8_lossy(&out.stdout);
+                            if !stdout_str.trim().is_empty() {
+                                println!("--- git diff ---\n{}\n--- end git diff ---", stdout_str.trim());
+                            } else {
+                                println!("No differences found");
+                            }
+                            
+                            // Print stderr if not empty
+                            let stderr_str = String::from_utf8_lossy(&out.stderr);
+                            if !stderr_str.trim().is_empty() {
+                                eprintln!("--- stderr ---\n{}\n--- end stderr ---", stderr_str.trim());
+                            }
+                            
+                            // Show exit status if not successful
+                            if !out.status.success() {
+                                eprintln!("Git diff failed with status: {}", out.status);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to execute git diff: {}", e);
                         }
                     }
                 }
