@@ -15,7 +15,7 @@ pub enum LlmProvider {
 
 impl Default for LlmProvider {
     fn default() -> Self {
-        LlmProvider::Ollama
+        LlmProvider::Gemini
     }
 }
 
@@ -219,7 +219,7 @@ pub async fn generate_commit_message(original_prompt: &str, git_diff: &str) -> a
         match generate_commit_message_gemini(original_prompt, git_diff, &api_key).await {
             Ok(message) => return Ok(message),
             Err(e) => {
-                eprintln!("⚠️ Gemini commit generation failed: {}. Falling back to Ollama...", e);
+                eprintln!("Warning: Gemini commit generation failed: {}. Falling back to Ollama...", e);
             }
         }
     }

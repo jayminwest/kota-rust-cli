@@ -2,8 +2,11 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::Command;
 use anyhow::Result;
+use colored::*;
 use crate::sr_parser::SearchReplaceBlock;
 use crate::llm;
+use crate::input;
+use crate::thinking;
 
 pub fn apply_sr_block(block: &SearchReplaceBlock) -> Result<()> {
     // Read the file content
@@ -26,7 +29,9 @@ pub fn apply_sr_block(block: &SearchReplaceBlock) -> Result<()> {
 }
 
 async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) -> Result<()> {
-    println!("\n🔄 Creating automatic commit...");
+    println!();
+    println!("{}", "─".repeat(60).dimmed());
+    println!("{}", "Creating commit...".bright_yellow());
     
     // Stage the modified files
     for file in modified_files {
@@ -57,14 +62,16 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
     let git_diff = String::from_utf8_lossy(&diff_output.stdout);
     
     if git_diff.trim().is_empty() {
-        println!("⚠️  No changes to commit (files may not have been modified)");
+        println!("Warning: No changes to commit (files may not have been modified)");
         return Ok(());
     }
     
     // Generate commit message using LLM
+    let commit_thinking = thinking::show_generating_commit();
     match llm::generate_commit_message(original_prompt, &git_diff).await {
         Ok(commit_message) => {
-            println!("💬 Generated commit message: \"{}\"", commit_message);
+            commit_thinking.finish();
+            println!("Generated commit message: \"{}\"", commit_message);
             
             // Create the commit
             let commit_output = Command::new("git")
@@ -75,15 +82,16 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
                 .map_err(|e| anyhow::anyhow!("Failed to create commit: {}", e))?;
             
             if commit_output.status.success() {
-                println!("✅ Commit created successfully!");
+                println!("Commit created successfully!");
             } else {
                 let stderr = String::from_utf8_lossy(&commit_output.stderr);
                 return Err(anyhow::anyhow!("Git commit failed: {}", stderr));
             }
         }
         Err(e) => {
-            println!("⚠️  Failed to generate commit message: {}", e);
-            println!("📝 Creating commit with default message...");
+            commit_thinking.finish();
+            println!("Warning: Failed to generate commit message: {}", e);
+            println!("Creating commit with default message...");
             
             // Fallback to a simple commit message
             let fallback_message = format!("Auto-commit: {}", original_prompt);
@@ -95,7 +103,7 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
                 .map_err(|e| anyhow::anyhow!("Failed to create fallback commit: {}", e))?;
             
             if commit_output.status.success() {
-                println!("✅ Fallback commit created successfully!");
+                println!("Fallback commit created successfully!");
             } else {
                 let stderr = String::from_utf8_lossy(&commit_output.stderr);
                 return Err(anyhow::anyhow!("Fallback git commit failed: {}", stderr));
@@ -111,8 +119,8 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
         return Ok(());
     }
 
-    println!("\n🔧 Found {} file edit suggestion(s):", blocks.len());
-    println!("{}", "─".repeat(60));
+    println!("{}", "─".repeat(60).dimmed());
+    println!("{} {}", "File edits:".bright_yellow().bold(), blocks.len());
 
     let mut apply_all = false;
     let mut quit_applying = false;
@@ -126,25 +134,23 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
         // Check if the file is in context
         let file_in_context = context_manager.is_file_in_context(&block.file_path);
         
-        println!("\n📁 File: {}{}", block.file_path, 
-                if !file_in_context { " ⚠️ (WARNING: File not in context)" } else { "" });
-        println!("{}", "─".repeat(40));
+        println!();
+        let warning = if !file_in_context { " (not in context)".red() } else { "".normal() };
+        println!("{}{}", block.file_path.bright_white().bold(), warning);
+        println!("{}", "─".repeat(40).dimmed());
         
         // Display search content
-        println!("🔍 SEARCH:");
+        println!("{}", "Search:".dimmed());
         for line in block.search_lines.lines() {
-            println!("  │ {}", line);
+            println!("  {}", line.red());
         }
         
-        println!("{}", "─".repeat(40));
-        
-        // Display replace content
-        println!("✏️  REPLACE:");
+        println!("{}", "Replace:".dimmed());
         for line in block.replace_lines.lines() {
-            println!("  │ {}", line);
+            println!("  {}", line.green());
         }
         
-        println!("{}", "─".repeat(40));
+        println!("{}", "─".repeat(40).dimmed());
         
         // Get user confirmation unless apply_all is set
         let should_apply = if apply_all {
@@ -153,16 +159,16 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
             loop {
                 // Warn about files not in context
                 if !file_in_context {
-                    println!("⚠️ WARNING: This file was not added to context with /add_file!");
-                    println!("⚠️ Modifications to files not in context may be risky.");
+                    println!("{}", "Warning: File not in context".yellow());
                 }
                 
-                print!("Apply this change? (y/n/a/q) [yes/no/apply_all/quit]: ");
+                print!("{} ", "Apply? (y/n/a/q):".bright_white());
                 io::stdout().flush()?;
                 
-                let mut input = String::new();
-                io::stdin().read_line(&mut input)?;
-                let choice = input.trim().to_lowercase();
+                let choice = match input::read_single_char() {
+                    Ok(c) => c.to_lowercase().to_string(),
+                    Err(_) => continue,
+                };
                 
                 match choice.as_str() {
                     "y" | "yes" => break true,
@@ -186,30 +192,30 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
         if should_apply {
             match apply_sr_block(block) {
                 Ok(()) => {
-                    println!("✅ Successfully applied change to '{}'", block.file_path);
+                    println!("{} {}", "Applied:".green(), block.file_path);
                     applied_files.push(block.file_path.clone());
                 }
                 Err(e) => {
-                    println!("❌ Failed to apply change to '{}': {}", block.file_path, e);
+                    println!("{} {} - {}", "Failed:".red(), block.file_path, e);
                 }
             }
         } else {
-            println!("⏭️  Skipped change to '{}'", block.file_path);
+            println!("{} {}", "Skipped:".dimmed(), block.file_path);
         }
     }
 
     if quit_applying && blocks.len() > 1 {
-        println!("\n⚠️  Stopped applying changes (remaining {} changes were skipped)", 
+        println!("\nWarning: Stopped applying changes (remaining {} changes were skipped)", 
                  blocks.len() - blocks.iter().position(|_| quit_applying).unwrap_or(0));
     }
 
-    println!("\n📝 File editing session complete.");
+    println!("\nFile editing session complete.");
     
     // Create automatic commit if any files were modified
     if !applied_files.is_empty() {
         if let Err(e) = create_auto_commit(original_prompt, &applied_files).await {
-            println!("⚠️  Auto-commit failed: {}", e);
-            println!("📋 You can manually commit the changes with: git add . && git commit");
+            println!("Warning: Auto-commit failed: {}", e);
+            println!("You can manually commit the changes with: git add . && git commit");
         }
     }
     
