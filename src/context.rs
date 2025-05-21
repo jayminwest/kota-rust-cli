@@ -1,5 +1,6 @@
 use std::fs;
 use anyhow::Context;
+use colored::*;
 
 pub struct ContextManager {
     items: Vec<String>,
@@ -22,13 +23,13 @@ impl ContextManager {
         // Track the file path
         self.file_paths.push(file_path.to_string());
         
-        println!("Added file '{}' to context.", file_path);
+        println!("{} {}", "Added to context:".green(), file_path);
         Ok(())
     }
 
     pub fn add_snippet(&mut self, snippet: String) {
         self.items.push(format!("--- Snippet --- \n{}\n--- End Snippet ---", snippet));
-        println!("Added snippet to context.");
+        println!("{}", "Added snippet to context".green());
     }
 
     pub fn show_context(&self) {
@@ -46,7 +47,7 @@ impl ContextManager {
     pub fn clear_context(&mut self) {
         self.items.clear();
         self.file_paths.clear();
-        println!("Context cleared.");
+        println!("{}", "Context cleared".green());
     }
     
     pub fn is_file_in_context(&self, file_path: &str) -> bool {

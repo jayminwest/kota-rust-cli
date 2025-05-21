@@ -9,26 +9,26 @@ KOTA is an interactive Rust CLI that integrates with local Ollama LLM instances 
 - **Context Management**: Maintain conversation context by adding files and code snippets
 - **File Safety**: Warns when editing files not explicitly added to context
 - **Auto-Commit**: Automatically creates git commits with AI-generated commit messages (uses Gemini Flash for fast generation)
-- **Multiple LLM Providers**: Works with both Ollama (local) and Google Gemini (cloud)
-  - Ollama: Local models (default: qwen3:8b)
-  - Google Gemini: Cloud-based models (gemini-2.5-pro-preview-05-06)
+- **Multiple LLM Providers**: Works with both Google Gemini (cloud, default) and Ollama (local)
+  - Google Gemini: Cloud-based models (default: gemini-2.5-pro-preview-05-06)
+  - Ollama: Local models (qwen3:8b)
 
 ## Prerequisites
 
 - [Rust](https://rustup.rs/) (latest stable version)
 
-### For Ollama (Local LLM)
+### For Google Gemini (Cloud LLM) - Default
+- Google Gemini API key from [Google AI Studio](https://ai.google.dev/)
+  ```bash
+  export GEMINI_API_KEY=your_api_key_here
+  ```
+
+### For Ollama (Local LLM) - Alternative
 - [Ollama](https://ollama.ai/) running locally with a compatible model
   ```bash
   brew install ollama
   ollama pull qwen3:8b
   ollama serve
-  ```
-
-### For Google Gemini (Cloud LLM)
-- Google Gemini API key from [Google AI Studio](https://ai.google.dev/)
-  ```bash
-  export GEMINI_API_KEY=your_api_key_here
   ```
 
 ## Installation
@@ -59,6 +59,7 @@ cargo run
 - `/git_status` - Show git status
 - `/git_diff [<path>]` - Show git diff
 - `/provider <ollama|gemini>` - Switch between LLM providers
+- `/help` - Show all available commands
 - `/quit` - Exit application
 
 ### AI Interactions
@@ -77,8 +78,8 @@ The AI can respond with:
 ### Example Workflow
 
 ```bash
-# Switch to your preferred LLM provider
-/provider gemini  # or /provider ollama
+# Switch LLM provider if needed (Gemini is default)
+/provider ollama  # or /provider gemini
 
 # Add files to context
 /add_file src/main.rs
@@ -153,8 +154,8 @@ export GEMINI_API_KEY=your_api_key_here
 
 Switch providers in the CLI:
 ```bash
+/provider gemini    # Use Google Gemini (default)
 /provider ollama    # Use local Ollama
-/provider gemini    # Use Google Gemini
 ```
 
 ## Contributing

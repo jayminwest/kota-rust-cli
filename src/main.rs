@@ -1,37 +1,83 @@
 use std::io::{self, Write};
 use std::process::Command;
+use colored::*;
+use termimad::*;
 
 mod llm;
 mod context;
 mod sr_parser;
 mod editor;
 mod cmd_parser;
+mod input;
+mod thinking;
 
 use context::ContextManager;
 use llm::LlmProvider;
 
+fn render_markdown(content: &str) -> anyhow::Result<()> {
+    // Create a markdown renderer with customized skin
+    let mut skin = MadSkin::default();
+    
+    // Import the correct Color type from crossterm
+    use termimad::crossterm::style::Color;
+    
+    // Customize colors to match the existing UI theme using termimad's color functions
+    skin.bold.set_fg(Color::White);
+    skin.italic.set_fg(Color::AnsiValue(248)); // Light gray
+    skin.strikeout.set_fg(Color::AnsiValue(244)); // Dimmed gray
+    
+    // Style headers with bright blue colors
+    skin.headers[0].set_fg(Color::Rgb{r: 100, g: 200, b: 255}); // Bright blue for h1
+    skin.headers[1].set_fg(Color::Rgb{r: 120, g: 200, b: 255}); // Slightly dimmer blue for h2
+    skin.headers[2].set_fg(Color::Rgb{r: 140, g: 200, b: 255}); // Even dimmer for h3
+    
+    // Style code blocks and inline code
+    skin.code_block.set_bg(Color::AnsiValue(235)); // Dark gray background
+    skin.code_block.set_fg(Color::AnsiValue(252)); // Light gray text
+    skin.inline_code.set_bg(Color::AnsiValue(237)); // Slightly lighter dark gray
+    skin.inline_code.set_fg(Color::AnsiValue(252)); // Light gray text
+    
+    // Style lists
+    skin.bullet.set_fg(Color::Cyan);
+    
+    // Style quotes
+    skin.quote_mark.set_fg(Color::AnsiValue(244)); // Dimmed gray
+    
+    // Print the markdown content with proper formatting
+    println!("{}", skin.term_text(content));
+    
+    Ok(())
+}
+
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("KOTA - Type '/quit' to exit.");
-    println!("Commands: /add_file <path>, /add_snippet <text>, /show_context, /clear_context, /run <command>, /run_add <command>, /git_add <file_path>, /git_commit \"<message>\", /git_status, /git_diff [<path>], /provider <ollama|gemini>");
-    println!("Features: Ask KOTA to edit files using Search/Replace blocks - KOTA will detect and ask for confirmation before applying changes.");
+    println!("{}", "═".repeat(60).bright_blue());
+    println!("{}", "KOTA - AI Coding Assistant".bright_white().bold());
+    println!("{}", "═".repeat(60).bright_blue());
     
     let mut context_manager = ContextManager::new();
     let mut current_provider = LlmProvider::default();
     
-    // Check for environment variables and show provider status
+    // Show provider status and check API key for Gemini
     match current_provider {
-        LlmProvider::Ollama => println!("🦙 Using Ollama (default)"),
-        LlmProvider::Gemini => println!("🧠 Using Google Gemini"),
+        LlmProvider::Ollama => println!("{} {}", "Provider:".dimmed(), "Ollama (local)".cyan()),
+        LlmProvider::Gemini => {
+            if std::env::var("GEMINI_API_KEY").is_ok() {
+                println!("{} {}", "Provider:".dimmed(), "Google Gemini (cloud)".cyan());
+            } else {
+                println!("{} {}", "Provider:".dimmed(), "Google Gemini (cloud) - Missing API key".yellow());
+                println!("{} export GEMINI_API_KEY=your_api_key", "Set with:".dimmed());
+                println!("{} Use /provider ollama to switch to local Ollama", "Alternative:".dimmed());
+            }
+        }
     }
+    println!();
+    println!("{}", "Type your request or use /help for commands".dimmed());
+    println!();
 
     loop {
-        println!("You: ");
-        io::stdout().flush()?;
-
-        let mut user_input = String::new();
-        io::stdin().read_line(&mut user_input)?;
-
+        let user_input = input::read_line_with_shortcuts()?;
         let trimmed_input = user_input.trim();
 
         if trimmed_input.is_empty() {
@@ -46,15 +92,16 @@ async fn main() -> anyhow::Result<()> {
 
             match command {
                 "/quit" => {
-                    println!("exiting KOTA");
+                    println!("{}", "─".repeat(60).dimmed());
+                    println!("{}", "Goodbye!".bright_white());
                     break;
                 }
                 "/add_file" => {
                     if arg.is_empty() {
-                        println!("Usage: /add_file <path_to_file>");
+                        println!("{} /add_file <path_to_file>", "Usage:".yellow());
                     } else {
                         if let Err(e) = context_manager.add_file(arg) {
-                            eprintln!("Error adding file: {}", e);
+                            println!("{} {}", "Error:".red(), e);
                         }
                     }
                 }
@@ -266,6 +313,47 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                 }
+                "/help" => {
+                    println!();
+                    println!("{}", "─".repeat(60).bright_blue());
+                    println!("{}", "KOTA Commands".bright_white().bold());
+                    println!("{}", "─".repeat(60).bright_blue());
+                    println!();
+                    
+                    println!("{}", "Context Management:".bright_yellow().bold());
+                    println!("  {} - Add file contents to context", "/add_file <path>".cyan());
+                    println!("  {} - Add text snippet to context", "/add_snippet <text>".cyan());
+                    println!("  {} - Display current context", "/show_context".cyan());
+                    println!("  {} - Clear all context", "/clear_context".cyan());
+                    println!();
+                    
+                    println!("{}", "Command Execution:".bright_yellow().bold());
+                    println!("  {} - Execute shell command", "/run <command>".cyan());
+                    println!("  {} - Execute command and add output to context", "/run_add <command>".cyan());
+                    println!();
+                    
+                    println!("{}", "Git Operations:".bright_yellow().bold());
+                    println!("  {} - Stage file for commit", "/git_add <file>".cyan());
+                    println!("  {} - Create git commit", "/git_commit \"<message>\"".cyan());
+                    println!("  {} - Show git status", "/git_status".cyan());
+                    println!("  {} - Show git diff", "/git_diff [<path>]".cyan());
+                    println!();
+                    
+                    println!("{}", "Configuration:".bright_yellow().bold());
+                    println!("  {} - Switch LLM provider", "/provider <ollama|gemini>".cyan());
+                    println!("  {} - Show current provider", "/provider".cyan());
+                    println!();
+                    
+                    println!("{}", "General:".bright_yellow().bold());
+                    println!("  {} - Show this help message", "/help".cyan());
+                    println!("  {} - Exit KOTA", "/quit".cyan());
+                    println!();
+                    
+                    println!("{}", "AI Interactions:".bright_yellow().bold());
+                    println!("  {} - Ask AI to edit files or execute commands", "Type any message".cyan());
+                    println!("  {} - AI can suggest file edits and shell commands", "".dimmed());
+                    println!();
+                }
                 "/provider" => {
                     if arg.is_empty() {
                         match current_provider {
@@ -277,16 +365,16 @@ async fn main() -> anyhow::Result<()> {
                         match arg.to_lowercase().as_str() {
                             "ollama" => {
                                 current_provider = LlmProvider::Ollama;
-                                println!("🦙 Switched to Ollama");
+                                println!("{} {}", "Provider:".green(), "Ollama (local)".cyan());
                             }
                             "gemini" => {
                                 // Check if GEMINI_API_KEY is set
                                 if std::env::var("GEMINI_API_KEY").is_ok() {
                                     current_provider = LlmProvider::Gemini;
-                                    println!("🧠 Switched to Google Gemini");
+                                    println!("{} {}", "Provider:".green(), "Google Gemini (cloud)".cyan());
                                 } else {
-                                    eprintln!("❌ GEMINI_API_KEY environment variable not found.");
-                                    eprintln!("Please set your Gemini API key: export GEMINI_API_KEY=your_api_key");
+                                    println!("{} {}", "Missing:".red(), "GEMINI_API_KEY environment variable");
+                                    println!("{} export GEMINI_API_KEY=your_api_key", "Set with:".dimmed());
                                 }
                             }
                             _ => {
@@ -302,10 +390,25 @@ async fn main() -> anyhow::Result<()> {
         } else {
             // Not a command, treat as a prompt for the LLM
             let current_context = context_manager.get_formatted_context();
+            
+            // Show thinking indicator while waiting for LLM response
+            let thinking = thinking::show_llm_thinking();
+            
             match llm::ask_model_with_provider(trimmed_input, &current_context, current_provider.clone()).await {
                 Ok(response) => {
-                    // Always display the response first
-                    println!("KOTA: {}", response);
+                    // Clear the thinking indicator
+                    thinking.finish();
+                    
+                    // Always display the response first with markdown rendering
+                    println!();
+                    println!("{}", "─".repeat(60).dimmed());
+                    
+                    // Try to render as markdown, fall back to plain text if it fails
+                    if let Err(_) = render_markdown(&response) {
+                        println!("{}", response);
+                    }
+                    
+                    println!();
                     
                     // Check if the response contains S/R blocks
                     if sr_parser::contains_sr_blocks(&response) {
@@ -329,42 +432,46 @@ async fn main() -> anyhow::Result<()> {
                         match cmd_parser::parse_command_blocks(&response) {
                             Ok(cmd_blocks) => {
                                 if !cmd_blocks.is_empty() {
-                                    println!("\n🔧 Found {} command(s) to execute:", cmd_blocks.len());
-                                    println!("{}", "─".repeat(60));
+                                    println!("{}", "─".repeat(60).dimmed());
+                                    println!("{} {}", "Commands to execute:".bright_yellow().bold(), cmd_blocks.len());
                                     
                                     for (i, cmd_block) in cmd_blocks.iter().enumerate() {
-                                        println!("\n💻 Command {}: {}", i + 1, cmd_block.command);
+                                        println!();
+                                        println!("{} {}", format!("Command {}:", i + 1).bright_white().bold(), cmd_block.command.bright_cyan());
                                         
                                         // Ask for confirmation
                                         loop {
-                                            print!("Execute this command? (y/n/q) [yes/no/quit]: ");
+                                            print!("{} ", "Execute? (y/n/q):".bright_white());
                                             io::stdout().flush()?;
                                             
-                                            let mut input = String::new();
-                                            io::stdin().read_line(&mut input)?;
-                                            let choice = input.trim().to_lowercase();
+                                            let choice = match input::read_single_char() {
+                                                Ok(c) => c.to_lowercase().to_string(),
+                                                Err(_) => continue,
+                                            };
                                             
                                             match choice.as_str() {
                                                 "y" | "yes" => {
-                                                    println!("🚀 Executing: {}", cmd_block.command);
+                                                    println!();
+                                                    println!("{}", "─".repeat(30).dimmed());
                                                     match cmd_parser::execute_command(&cmd_block.command).await {
                                                         Ok((stdout, stderr, success)) => {
                                                             if !stdout.trim().is_empty() {
-                                                                println!("--- stdout ---\n{}\n--- end stdout ---", stdout.trim());
+                                                                println!("{}", stdout.trim());
                                                                 // Add stdout to context for the model to see
                                                                 context_manager.add_snippet(format!("Command: {}\nOutput:\n{}", cmd_block.command, stdout.trim()));
                                                             }
                                                             if !stderr.trim().is_empty() {
-                                                                eprintln!("--- stderr ---\n{}\n--- end stderr ---", stderr.trim());
+                                                                println!("{}", stderr.trim().red());
                                                                 // Add stderr to context if it's significant (not just warnings)
                                                                 if !success || stderr.len() > 100 {
                                                                     context_manager.add_snippet(format!("Command: {}\nError output:\n{}", cmd_block.command, stderr.trim()));
                                                                 }
                                                             }
+                                                            println!("{}", "─".repeat(30).dimmed());
                                                             if success {
-                                                                println!("✅ Command completed successfully");
+                                                                println!("{}", "Success".green());
                                                             } else {
-                                                                println!("❌ Command failed");
+                                                                println!("{}", "Failed".red());
                                                                 // Always add failed commands to context
                                                                 if stdout.trim().is_empty() && stderr.trim().is_empty() {
                                                                     context_manager.add_snippet(format!("Command failed: {}", cmd_block.command));
@@ -372,7 +479,8 @@ async fn main() -> anyhow::Result<()> {
                                                             }
                                                         }
                                                         Err(e) => {
-                                                            eprintln!("❌ Failed to execute command: {}", e);
+                                                            println!("{}", "─".repeat(30).dimmed());
+                                                            println!("{} {}", "Execution failed:".red(), e);
                                                             // Add execution error to context
                                                             context_manager.add_snippet(format!("Command execution failed: {} - Error: {}", cmd_block.command, e));
                                                         }
@@ -380,11 +488,11 @@ async fn main() -> anyhow::Result<()> {
                                                     break;
                                                 }
                                                 "n" | "no" => {
-                                                    println!("⏭️ Skipped command");
+                                                    println!("{}", "Skipped".dimmed());
                                                     break;
                                                 }
                                                 "q" | "quit" => {
-                                                    println!("⚠️ Stopped executing commands");
+                                                    println!("{}", "Stopped executing commands".dimmed());
                                                     return Ok(());
                                                 }
                                                 _ => {
@@ -403,6 +511,8 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
                 Err(e) => {
+                    // Clear the thinking indicator
+                    thinking.finish();
                     eprintln!("Error: {}", e);
                 }
             }
