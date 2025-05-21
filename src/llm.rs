@@ -35,12 +35,69 @@ const DEFAULT_MODEL: &str = "qwen3:8b";
 pub async fn ask_model(user_prompt: &str, context_str: &str) -> anyhow::Result<String> {
     // Create a client with timeout settings
     let client = ClientBuilder::new()
-        .timeout(Duration::from_secs(30))  // 30 second timeout for the entire request
-        .connect_timeout(Duration::from_secs(5))  // 5 second timeout for establishing connection
+        .timeout(Duration::from_secs(120))  // 2 minute timeout for the entire request
+        .connect_timeout(Duration::from_secs(10))  // 10 second timeout for establishing connection
         .build()
         .context("Failed to create HTTP client")?;
 
     let mut messages = Vec::new();
+
+    // Add S/R and command execution instructions as a system message
+    let system_instructions = r#"
+You are KOTA, a helpful coding assistant. You can suggest file edits and run commands.
+
+For file edits, use this Search/Replace block format:
+
+path/to/file.ext
+<<<<<<< SEARCH
+content to be searched and replaced
+=======
+new content to replace the searched content
+>>>>>>> REPLACE
+
+For commands, use code blocks with bash/sh/command:
+
+```bash
+ls -la
+cd src
+```
+
+Rules for file edits:
+- Use exact indentation and whitespace in the SEARCH block
+- Only replace the first occurrence of the search content
+- Multiple S/R blocks can be used in a single response
+- File paths should be relative to the project root
+- Always provide enough context in the SEARCH block to uniquely identify the location
+
+Rules for commands:
+- Use ```bash, ```sh, or ```command for command blocks
+- Commands in a single block will be chained with &&
+- The user will be prompted before each command execution
+- Use commands for tasks like building, testing, file operations, etc.
+
+Example file edit:
+src/main.rs
+<<<<<<< SEARCH
+fn old_function() {
+    println!("Hello, old world!");
+}
+=======
+fn new_function() {
+    println!("Hello, new world!");
+}
+>>>>>>> REPLACE
+
+Example commands:
+```bash
+cargo build
+cargo test
+```
+"#;
+
+    messages.push(OllamaChatMessage {
+        role: "system".to_string(),
+        content: system_instructions.to_string(),
+    });
 
     // Add context as a system message if it's not empty
     if !context_str.is_empty() {
@@ -100,4 +157,82 @@ pub async fn ask_model(user_prompt: &str, context_str: &str) -> anyhow::Result<S
         .context("failed to parse JSON response from Ollama API")?;
 
     Ok(ollama_response.message.content)
+}
+
+pub async fn generate_commit_message(original_prompt: &str, git_diff: &str) -> anyhow::Result<String> {
+    let client = ClientBuilder::new()
+        .timeout(Duration::from_secs(60))  // 1 minute timeout for commit message generation
+        .connect_timeout(Duration::from_secs(10))
+        .build()
+        .context("Failed to create HTTP client")?;
+
+    let commit_instructions = r#"
+You are a git commit message generator. Generate a concise, descriptive commit message based on the user's original request and the git diff showing what actually changed.
+
+Rules:
+- Use conventional commit format: type(scope): description
+- Keep it under 72 characters
+- Use present tense ("add" not "added")
+- Common types: feat, fix, refactor, docs, style, test, chore
+- Be specific but concise
+- Focus on the semantic change, not the implementation details
+- Don't mention "LLM" or "AI" in the message
+
+Examples:
+- feat(auth): add user login validation
+- fix(parser): handle edge case in S/R blocks
+- refactor(api): simplify error handling logic
+- docs(readme): update installation instructions
+"#;
+
+    let prompt = format!(
+        "Original user request: \"{}\"\n\nGit diff of changes:\n{}\n\nGenerate only the commit message, nothing else:",
+        original_prompt, git_diff
+    );
+
+    let messages = vec![
+        OllamaChatMessage {
+            role: "system".to_string(),
+            content: commit_instructions.to_string(),
+        },
+        OllamaChatMessage {
+            role: "user".to_string(),
+            content: prompt,
+        },
+    ];
+
+    let request_payload = OllamaChatRequest {
+        model: DEFAULT_MODEL.to_string(),
+        messages,
+        stream: false,
+    };
+
+    let response = client
+        .post(OLLAMA_API_URL)
+        .json(&request_payload)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_connect() {
+                anyhow::anyhow!("Failed to connect to Ollama API for commit message generation")
+            } else if e.is_timeout() {
+                anyhow::anyhow!("Commit message generation timed out")
+            } else {
+                anyhow::anyhow!("Failed to generate commit message: {}", e)
+            }
+        })?;
+
+    if !response.status().is_success() {
+        return Err(anyhow::anyhow!("Failed to generate commit message: HTTP {}", response.status()));
+    }
+
+    let ollama_response = response
+        .json::<OllamaChatResponse>()
+        .await
+        .context("Failed to parse commit message response")?;
+
+    // Clean up the response (remove any extra whitespace/newlines)
+    let commit_message = ollama_response.message.content.trim().to_string();
+    
+    Ok(commit_message)
 }

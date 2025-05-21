@@ -3,17 +3,25 @@ use anyhow::Context;
 
 pub struct ContextManager {
     items: Vec<String>,
+    file_paths: Vec<String>, // Track added file paths
 }
 
 impl ContextManager {
     pub fn new() -> Self {
-        Self { items: Vec::new() }
+        Self { 
+            items: Vec::new(),
+            file_paths: Vec::new(),
+        }
     }
 
     pub fn add_file(&mut self, file_path: &str) -> anyhow::Result<()> {
         let content = fs::read_to_string(file_path)
             .with_context(|| format!("Failed to read file: {}", file_path))?;
         self.items.push(format!("--- File: {} ---\n{}\n--- End File: {} ---", file_path, content, file_path));
+        
+        // Track the file path
+        self.file_paths.push(file_path.to_string());
+        
         println!("Added file '{}' to context.", file_path);
         Ok(())
     }
@@ -37,7 +45,12 @@ impl ContextManager {
 
     pub fn clear_context(&mut self) {
         self.items.clear();
+        self.file_paths.clear();
         println!("Context cleared.");
+    }
+    
+    pub fn is_file_in_context(&self, file_path: &str) -> bool {
+        self.file_paths.contains(&file_path.to_string())
     }
 
     pub fn get_formatted_context(&self) -> String {

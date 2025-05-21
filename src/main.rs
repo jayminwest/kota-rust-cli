@@ -3,6 +3,9 @@ use std::process::Command;
 
 mod llm;
 mod context;
+mod sr_parser;
+mod editor;
+mod cmd_parser;
 
 use context::ContextManager;
 
@@ -10,6 +13,7 @@ use context::ContextManager;
 async fn main() -> anyhow::Result<()> {
     println!("KOTA - Type '/quit' to exit.");
     println!("Commands: /add_file <path>, /add_snippet <text>, /show_context, /clear_context, /run <command>, /run_add <command>, /git_add <file_path>, /git_commit \"<message>\", /git_status, /git_diff [<path>]");
+    println!("Features: Ask KOTA to edit files using Search/Replace blocks - KOTA will detect and ask for confirmation before applying changes.");
     
     let mut context_manager = ContextManager::new();
 
@@ -263,7 +267,91 @@ async fn main() -> anyhow::Result<()> {
             let current_context = context_manager.get_formatted_context();
             match llm::ask_model(trimmed_input, &current_context).await {
                 Ok(response) => {
+                    // Always display the response first
                     println!("KOTA: {}", response);
+                    
+                    // Check if the response contains S/R blocks
+                    if sr_parser::contains_sr_blocks(&response) {
+                        // Parse and handle S/R blocks
+                        match sr_parser::parse_sr_blocks(&response) {
+                            Ok(blocks) => {
+                                if !blocks.is_empty() {
+                                    if let Err(e) = editor::confirm_and_apply_blocks(blocks, trimmed_input, &context_manager).await {
+                                        eprintln!("Error applying S/R blocks: {}", e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Error parsing S/R blocks: {}", e);
+                            }
+                        }
+                    }
+                    
+                    // Check if the response contains command blocks
+                    if cmd_parser::contains_command_blocks(&response) {
+                        match cmd_parser::parse_command_blocks(&response) {
+                            Ok(cmd_blocks) => {
+                                if !cmd_blocks.is_empty() {
+                                    println!("\n🔧 Found {} command(s) to execute:", cmd_blocks.len());
+                                    println!("{}", "─".repeat(60));
+                                    
+                                    for (i, cmd_block) in cmd_blocks.iter().enumerate() {
+                                        println!("\n💻 Command {}: {}", i + 1, cmd_block.command);
+                                        
+                                        // Ask for confirmation
+                                        loop {
+                                            print!("Execute this command? (y/n/q) [yes/no/quit]: ");
+                                            io::stdout().flush()?;
+                                            
+                                            let mut input = String::new();
+                                            io::stdin().read_line(&mut input)?;
+                                            let choice = input.trim().to_lowercase();
+                                            
+                                            match choice.as_str() {
+                                                "y" | "yes" => {
+                                                    println!("🚀 Executing: {}", cmd_block.command);
+                                                    match cmd_parser::execute_command(&cmd_block.command).await {
+                                                        Ok((stdout, stderr, success)) => {
+                                                            if !stdout.trim().is_empty() {
+                                                                println!("--- stdout ---\n{}\n--- end stdout ---", stdout.trim());
+                                                            }
+                                                            if !stderr.trim().is_empty() {
+                                                                eprintln!("--- stderr ---\n{}\n--- end stderr ---", stderr.trim());
+                                                            }
+                                                            if success {
+                                                                println!("✅ Command completed successfully");
+                                                            } else {
+                                                                println!("❌ Command failed");
+                                                            }
+                                                        }
+                                                        Err(e) => {
+                                                            eprintln!("❌ Failed to execute command: {}", e);
+                                                        }
+                                                    }
+                                                    break;
+                                                }
+                                                "n" | "no" => {
+                                                    println!("⏭️ Skipped command");
+                                                    break;
+                                                }
+                                                "q" | "quit" => {
+                                                    println!("⚠️ Stopped executing commands");
+                                                    return Ok(());
+                                                }
+                                                _ => {
+                                                    println!("Please enter 'y' (yes), 'n' (no), or 'q' (quit)");
+                                                    continue;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Error parsing command blocks: {}", e);
+                            }
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!("Error: {}", e);
