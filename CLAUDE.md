@@ -125,17 +125,17 @@ KOTA automatically detects when your input should continue on multiple lines and
 
 **Examples:**
 ```
-› Tell me about this function: {
+[I] Tell me about this function: {
 ...   "name": "example",
 ...   "params": ["a", "b"]
 ... }
 
-› ```python
+[I] ```python
 ... def hello():
 ...     print("Hello, World!")
 ... ```
 
-› This is a long prompt that \
+[I] This is a long prompt that \
 ... continues on the next line
 ```
 
