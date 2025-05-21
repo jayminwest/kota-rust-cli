@@ -6,6 +6,7 @@ use gemini_client_api::gemini::{
     ask::Gemini,
     types::sessions::Session,
 };
+use crate::prompts::PromptsConfig;
 
 #[derive(Debug, Clone)]
 pub enum LlmProvider {
@@ -55,13 +56,14 @@ pub async fn ask_model(user_prompt: &str, context_str: &str) -> anyhow::Result<S
 }
 
 pub async fn ask_model_with_provider(user_prompt: &str, context_str: &str, provider: LlmProvider) -> anyhow::Result<String> {
+    let prompts_config = PromptsConfig::load().unwrap_or_default();
     match provider {
-        LlmProvider::Ollama => ask_ollama_model(user_prompt, context_str).await,
-        LlmProvider::Gemini => ask_gemini_model(user_prompt, context_str).await,
+        LlmProvider::Ollama => ask_ollama_model(user_prompt, context_str, &prompts_config).await,
+        LlmProvider::Gemini => ask_gemini_model(user_prompt, context_str, &prompts_config).await,
     }
 }
 
-async fn ask_gemini_model(user_prompt: &str, context_str: &str) -> anyhow::Result<String> {
+async fn ask_gemini_model(user_prompt: &str, context_str: &str, prompts_config: &PromptsConfig) -> anyhow::Result<String> {
     let api_key = std::env::var("GEMINI_API_KEY")
         .map_err(|_| anyhow::anyhow!("GEMINI_API_KEY environment variable not found. Please set it to use Gemini."))?;
     
@@ -69,7 +71,7 @@ async fn ask_gemini_model(user_prompt: &str, context_str: &str) -> anyhow::Resul
     let mut session = Session::new(10); // Keep last 10 messages for context
     
     // Prepare the full prompt with system instructions and context
-    let system_instructions = get_system_instructions();
+    let system_instructions = prompts_config.get_system_instructions();
     let full_prompt = if context_str.is_empty() {
         format!("{}\n\nUser: {}", system_instructions, user_prompt)
     } else {
@@ -82,60 +84,7 @@ async fn ask_gemini_model(user_prompt: &str, context_str: &str) -> anyhow::Resul
     Ok(response.get_text(""))
 }
 
-fn get_system_instructions() -> String {
-    r#"
-You are KOTA, a helpful coding assistant. You can suggest file edits and run commands.
-
-For file edits, use this Search/Replace block format:
-
-path/to/file.ext
-<<<<<<< SEARCH
-content to be searched and replaced
-=======
-new content to replace the searched content
->>>>>>> REPLACE
-
-For commands, use code blocks with bash/sh/command:
-
-```bash
-ls -la
-cd src
-```
-
-Rules for file edits:
-- Use exact indentation and whitespace in the SEARCH block
-- Only replace the first occurrence of the search content
-- Multiple S/R blocks can be used in a single response
-- File paths should be relative to the project root
-- Always provide enough context in the SEARCH block to uniquely identify the location
-
-Rules for commands:
-- Use ```bash, ```sh, or ```command for command blocks
-- Commands in a single block will be chained with &&
-- The user will be prompted before each command execution
-- Use commands for tasks like building, testing, file operations, etc.
-
-Example file edit:
-src/main.rs
-<<<<<<< SEARCH
-fn old_function() {
-    println!("Hello, old world!");
-}
-=======
-fn new_function() {
-    println!("Hello, new world!");
-}
->>>>>>> REPLACE
-
-Example commands:
-```bash
-cargo build
-cargo test
-```
-"#.to_string()
-}
-
-async fn ask_ollama_model(user_prompt: &str, context_str: &str) -> anyhow::Result<String> {
+async fn ask_ollama_model(user_prompt: &str, context_str: &str, prompts_config: &PromptsConfig) -> anyhow::Result<String> {
     // Create a client with timeout settings
     let client = ClientBuilder::new()
         .timeout(Duration::from_secs(120))  // 2 minute timeout for the entire request
@@ -146,11 +95,11 @@ async fn ask_ollama_model(user_prompt: &str, context_str: &str) -> anyhow::Resul
     let mut messages = Vec::new();
 
     // Add S/R and command execution instructions as a system message
-    let system_instructions = get_system_instructions();
+    let system_instructions = prompts_config.get_system_instructions();
 
     messages.push(OllamaChatMessage {
         role: "system".to_string(),
-        content: system_instructions,
+        content: system_instructions.to_string(),
     });
 
     // Add context as a system message if it's not empty
@@ -214,9 +163,11 @@ async fn ask_ollama_model(user_prompt: &str, context_str: &str) -> anyhow::Resul
 }
 
 pub async fn generate_commit_message(original_prompt: &str, git_diff: &str) -> anyhow::Result<String> {
+    let prompts_config = PromptsConfig::load().unwrap_or_default();
+    
     // Try Gemini first, fallback to Ollama if API key not available
     if let Ok(api_key) = std::env::var("GEMINI_API_KEY") {
-        match generate_commit_message_gemini(original_prompt, git_diff, &api_key).await {
+        match generate_commit_message_gemini(original_prompt, git_diff, &api_key, &prompts_config).await {
             Ok(message) => return Ok(message),
             Err(e) => {
                 eprintln!("Warning: Gemini commit generation failed: {}. Falling back to Ollama...", e);
@@ -225,36 +176,14 @@ pub async fn generate_commit_message(original_prompt: &str, git_diff: &str) -> a
     }
     
     // Fallback to Ollama
-    generate_commit_message_ollama(original_prompt, git_diff).await
+    generate_commit_message_ollama(original_prompt, git_diff, &prompts_config).await
 }
 
-async fn generate_commit_message_gemini(original_prompt: &str, git_diff: &str, api_key: &str) -> anyhow::Result<String> {
+async fn generate_commit_message_gemini(original_prompt: &str, git_diff: &str, api_key: &str, prompts_config: &PromptsConfig) -> anyhow::Result<String> {
     let ai = Gemini::new(api_key.to_string(), GEMINI_COMMIT_MODEL, None);
     let mut session = Session::new(2); // Simple session for commit messages
     
-    let commit_instructions = r#"
-You are a git commit message generator. Generate a concise, descriptive commit message based on the user's original request and the git diff showing what actually changed.
-
-Rules:
-- Use conventional commit format: type(scope): description
-- Keep it under 72 characters
-- Use present tense ("add" not "added")
-- Common types: feat, fix, refactor, docs, style, test, chore
-- Be specific but concise
-- Focus on the semantic change, not the implementation details
-- Don't mention "LLM" or "AI" in the message
-
-Examples:
-- feat(auth): add user login validation
-- fix(parser): handle edge case in S/R blocks
-- refactor(api): simplify error handling logic
-- docs(readme): update installation instructions
-"#;
-
-    let prompt = format!(
-        "{}\n\nOriginal user request: \"{}\"\n\nGit diff of changes:\n{}\n\nGenerate only the commit message, nothing else:",
-        commit_instructions, original_prompt, git_diff
-    );
+    let prompt = prompts_config.get_gemini_commit_prompt(original_prompt, git_diff);
     
     let response = ai.ask(session.ask_string(&prompt)).await
         .map_err(|e| anyhow::anyhow!("Gemini commit generation error: {}", e))?;
@@ -265,42 +194,16 @@ Examples:
     Ok(commit_message)
 }
 
-async fn generate_commit_message_ollama(original_prompt: &str, git_diff: &str) -> anyhow::Result<String> {
+async fn generate_commit_message_ollama(original_prompt: &str, git_diff: &str, prompts_config: &PromptsConfig) -> anyhow::Result<String> {
     let client = ClientBuilder::new()
         .timeout(Duration::from_secs(60))  // 1 minute timeout for commit message generation
         .connect_timeout(Duration::from_secs(10))
         .build()
         .context("Failed to create HTTP client")?;
 
-    let commit_instructions = r#"
-You are a git commit message generator. Generate a concise, descriptive commit message based on the user's original request and the git diff showing what actually changed.
-
-Rules:
-- Use conventional commit format: type(scope): description
-- Keep it under 72 characters
-- Use present tense ("add" not "added")
-- Common types: feat, fix, refactor, docs, style, test, chore
-- Be specific but concise
-- Focus on the semantic change, not the implementation details
-- Don't mention "LLM" or "AI" in the message
-
-Examples:
-- feat(auth): add user login validation
-- fix(parser): handle edge case in S/R blocks
-- refactor(api): simplify error handling logic
-- docs(readme): update installation instructions
-"#;
-
-    let prompt = format!(
-        "Original user request: \"{}\"\n\nGit diff of changes:\n{}\n\nGenerate only the commit message, nothing else:",
-        original_prompt, git_diff
-    );
+    let prompt = prompts_config.get_ollama_commit_prompt(original_prompt, git_diff);
 
     let messages = vec![
-        OllamaChatMessage {
-            role: "system".to_string(),
-            content: commit_instructions.to_string(),
-        },
         OllamaChatMessage {
             role: "user".to_string(),
             content: prompt,

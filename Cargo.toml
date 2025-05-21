@@ -15,6 +15,7 @@ colored = "2.0"
 termimad = "0.30"
 indicatif = "0.17"
 reedline = "0.39"
+toml = "0.8"
 
 [dev-dependencies]
 tempfile = "3.8"

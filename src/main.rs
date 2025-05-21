@@ -10,6 +10,7 @@ mod editor;
 mod cmd_parser;
 mod input;
 mod thinking;
+mod prompts;
 
 use context::ContextManager;
 use llm::LlmProvider;

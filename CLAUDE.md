@@ -45,6 +45,8 @@ command2
 
 **Context Manager** (`src/context.rs`): Maintains conversation context by storing file contents and code snippets that can be referenced in LLM conversations.
 
+**Prompts Configuration** (`src/prompts.rs`): Manages all system prompts and instructions via TOML configuration file. Provides configurable LLM behavior, commit message generation templates, and instruction customization without code changes.
+
 ### Application Flow
 
 1. User enters commands (starting with `/`) or natural language prompts with **vim bindings** and **automatic multiline support**
@@ -139,6 +141,22 @@ KOTA automatically detects when your input should continue on multiple lines and
 ... continues on the next line
 ```
 
+### Prompts Configuration
+
+KOTA uses a `prompts.toml` file to store all system prompts and instructions. This allows easy customization of how KOTA behaves without modifying code.
+
+**Configuration File**: `prompts.toml` (in project root)
+
+**Sections:**
+- `[system]` - Main LLM instructions and behavior
+- `[commit_generation]` - Commit message generation prompts for Gemini and Ollama
+- `[search_replace]` - S/R block format reminders
+- `[commands]` - Command execution guidelines
+
+**Customization**: Edit `prompts.toml` to customize KOTA's personality, instructions, or output format. Changes take effect immediately on next LLM call.
+
+**Fallback**: If `prompts.toml` is missing, KOTA uses built-in default prompts.
+
 ### Dependencies
 - `tokio` - Async runtime
 - `reqwest` - HTTP client for Ollama API calls
@@ -150,4 +168,5 @@ KOTA automatically detects when your input should continue on multiple lines and
 - `termimad` - Markdown rendering in terminal
 - `indicatif` - Progress bars and spinners for thinking indicators
 - `reedline` - Advanced line editing with vim bindings
+- `toml` - Configuration file parsing
 - `tempfile` - Test utilities (dev dependency)
