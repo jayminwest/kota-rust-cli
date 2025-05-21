@@ -2,6 +2,22 @@ use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use anyhow::Context;
 use std::time::Duration;
+use gemini_client_api::gemini::{
+    ask::Gemini,
+    types::sessions::Session,
+};
+
+#[derive(Debug, Clone)]
+pub enum LlmProvider {
+    Ollama,
+    Gemini,
+}
+
+impl Default for LlmProvider {
+    fn default() -> Self {
+        LlmProvider::Ollama
+    }
+}
 
 // Structs for Ollama's /api/chat endpoint (non-streaming)
 #[derive(Serialize)]
@@ -30,20 +46,44 @@ struct OllamaResponseMessage {
 }
 
 const OLLAMA_API_URL: &str = "http://localhost:11434/api/chat";
-const DEFAULT_MODEL: &str = "qwen3:8b";
+const DEFAULT_OLLAMA_MODEL: &str = "qwen3:8b";
+const DEFAULT_GEMINI_MODEL: &str = "gemini-2.5-pro-preview-05-06";
+const GEMINI_COMMIT_MODEL: &str = "gemini-2.5-flash-preview-05-20";
 
 pub async fn ask_model(user_prompt: &str, context_str: &str) -> anyhow::Result<String> {
-    // Create a client with timeout settings
-    let client = ClientBuilder::new()
-        .timeout(Duration::from_secs(120))  // 2 minute timeout for the entire request
-        .connect_timeout(Duration::from_secs(10))  // 10 second timeout for establishing connection
-        .build()
-        .context("Failed to create HTTP client")?;
+    ask_model_with_provider(user_prompt, context_str, LlmProvider::default()).await
+}
 
-    let mut messages = Vec::new();
+pub async fn ask_model_with_provider(user_prompt: &str, context_str: &str, provider: LlmProvider) -> anyhow::Result<String> {
+    match provider {
+        LlmProvider::Ollama => ask_ollama_model(user_prompt, context_str).await,
+        LlmProvider::Gemini => ask_gemini_model(user_prompt, context_str).await,
+    }
+}
 
-    // Add S/R and command execution instructions as a system message
-    let system_instructions = r#"
+async fn ask_gemini_model(user_prompt: &str, context_str: &str) -> anyhow::Result<String> {
+    let api_key = std::env::var("GEMINI_API_KEY")
+        .map_err(|_| anyhow::anyhow!("GEMINI_API_KEY environment variable not found. Please set it to use Gemini."))?;
+    
+    let ai = Gemini::new(api_key, DEFAULT_GEMINI_MODEL, None);
+    let mut session = Session::new(10); // Keep last 10 messages for context
+    
+    // Prepare the full prompt with system instructions and context
+    let system_instructions = get_system_instructions();
+    let full_prompt = if context_str.is_empty() {
+        format!("{}\n\nUser: {}", system_instructions, user_prompt)
+    } else {
+        format!("{}\n\n{}\n\nUser: {}", system_instructions, context_str, user_prompt)
+    };
+    
+    let response = ai.ask(session.ask_string(&full_prompt)).await
+        .map_err(|e| anyhow::anyhow!("Gemini API error: {}", e))?;
+    
+    Ok(response.get_text(""))
+}
+
+fn get_system_instructions() -> String {
+    r#"
 You are KOTA, a helpful coding assistant. You can suggest file edits and run commands.
 
 For file edits, use this Search/Replace block format:
@@ -92,11 +132,25 @@ Example commands:
 cargo build
 cargo test
 ```
-"#;
+"#.to_string()
+}
+
+async fn ask_ollama_model(user_prompt: &str, context_str: &str) -> anyhow::Result<String> {
+    // Create a client with timeout settings
+    let client = ClientBuilder::new()
+        .timeout(Duration::from_secs(120))  // 2 minute timeout for the entire request
+        .connect_timeout(Duration::from_secs(10))  // 10 second timeout for establishing connection
+        .build()
+        .context("Failed to create HTTP client")?;
+
+    let mut messages = Vec::new();
+
+    // Add S/R and command execution instructions as a system message
+    let system_instructions = get_system_instructions();
 
     messages.push(OllamaChatMessage {
         role: "system".to_string(),
-        content: system_instructions.to_string(),
+        content: system_instructions,
     });
 
     // Add context as a system message if it's not empty
@@ -114,7 +168,7 @@ cargo test
     });
 
     let request_payload = OllamaChatRequest {
-        model: DEFAULT_MODEL.to_string(),
+        model: DEFAULT_OLLAMA_MODEL.to_string(),
         messages,
         stream: false,
     };
@@ -160,6 +214,58 @@ cargo test
 }
 
 pub async fn generate_commit_message(original_prompt: &str, git_diff: &str) -> anyhow::Result<String> {
+    // Try Gemini first, fallback to Ollama if API key not available
+    if let Ok(api_key) = std::env::var("GEMINI_API_KEY") {
+        match generate_commit_message_gemini(original_prompt, git_diff, &api_key).await {
+            Ok(message) => return Ok(message),
+            Err(e) => {
+                eprintln!("⚠️ Gemini commit generation failed: {}. Falling back to Ollama...", e);
+            }
+        }
+    }
+    
+    // Fallback to Ollama
+    generate_commit_message_ollama(original_prompt, git_diff).await
+}
+
+async fn generate_commit_message_gemini(original_prompt: &str, git_diff: &str, api_key: &str) -> anyhow::Result<String> {
+    let ai = Gemini::new(api_key.to_string(), GEMINI_COMMIT_MODEL, None);
+    let mut session = Session::new(2); // Simple session for commit messages
+    
+    let commit_instructions = r#"
+You are a git commit message generator. Generate a concise, descriptive commit message based on the user's original request and the git diff showing what actually changed.
+
+Rules:
+- Use conventional commit format: type(scope): description
+- Keep it under 72 characters
+- Use present tense ("add" not "added")
+- Common types: feat, fix, refactor, docs, style, test, chore
+- Be specific but concise
+- Focus on the semantic change, not the implementation details
+- Don't mention "LLM" or "AI" in the message
+
+Examples:
+- feat(auth): add user login validation
+- fix(parser): handle edge case in S/R blocks
+- refactor(api): simplify error handling logic
+- docs(readme): update installation instructions
+"#;
+
+    let prompt = format!(
+        "{}\n\nOriginal user request: \"{}\"\n\nGit diff of changes:\n{}\n\nGenerate only the commit message, nothing else:",
+        commit_instructions, original_prompt, git_diff
+    );
+    
+    let response = ai.ask(session.ask_string(&prompt)).await
+        .map_err(|e| anyhow::anyhow!("Gemini commit generation error: {}", e))?;
+    
+    // Clean up the response (remove any extra whitespace/newlines)
+    let commit_message = response.get_text("").trim().to_string();
+    
+    Ok(commit_message)
+}
+
+async fn generate_commit_message_ollama(original_prompt: &str, git_diff: &str) -> anyhow::Result<String> {
     let client = ClientBuilder::new()
         .timeout(Duration::from_secs(60))  // 1 minute timeout for commit message generation
         .connect_timeout(Duration::from_secs(10))
@@ -202,7 +308,7 @@ Examples:
     ];
 
     let request_payload = OllamaChatRequest {
-        model: DEFAULT_MODEL.to_string(),
+        model: DEFAULT_OLLAMA_MODEL.to_string(),
         messages,
         stream: false,
     };

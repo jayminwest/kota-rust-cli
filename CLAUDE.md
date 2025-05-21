@@ -20,7 +20,10 @@ KOTA is an interactive Rust CLI that integrates with local Ollama LLM instances 
 
 ### Core Components
 
-**LLM Integration** (`src/llm.rs`): Communicates with Ollama API (default model: qwen3:8b) at `http://localhost:11434/api/chat`. Uses a non-streaming chat API with proper error handling for connection issues and timeouts. Includes functionality to generate conventional commit messages based on git diffs and user prompts.
+**LLM Integration** (`src/llm.rs`): Supports multiple LLM providers:
+- Ollama API (local): Default model qwen3:8b at `http://localhost:11434/api/chat`
+- Google Gemini API (cloud): Default model gemini-2.5-pro-preview-05-06
+Uses non-streaming APIs with proper error handling for connection issues and timeouts. Includes functionality to generate conventional commit messages using Gemini Flash (gemini-2.5-flash-preview-05-20) with fallback to Ollama, based on git diffs and user prompts.
 
 **Search/Replace Parser** (`src/sr_parser.rs`): Parses structured S/R blocks from LLM responses using regex-based parsing. Expected format:
 ```
@@ -32,7 +35,7 @@ replacement content
 >>>>>>> REPLACE
 ```
 
-**Command Parser** (`src/cmd_parser.rs`): Parses command blocks from LLM responses and executes them with user confirmation. Expected format:
+**Command Parser** (`src/cmd_parser.rs`): Parses command blocks from LLM responses and executes them with user confirmation. Command output is automatically added to context so the model can see results and make follow-up decisions. Expected format:
 ```bash
 command1
 command2
@@ -50,7 +53,8 @@ command2
 4. Parse LLM response for S/R blocks and command blocks
 5. Present S/R blocks for user confirmation and apply approved file changes
 6. Present command blocks for user confirmation and execute approved commands
-7. **Auto-commit**: When S/R blocks are applied, automatically create git commits with LLM-generated commit messages based on git diffs
+7. **Command output context**: Automatically add command output to context for model awareness
+8. **Auto-commit**: When S/R blocks are applied, automatically create git commits with LLM-generated commit messages based on git diffs
 
 ### Available Commands
 
@@ -64,11 +68,13 @@ command2
 - `/git_commit "<message>"` - Create git commit
 - `/git_status` - Show git status
 - `/git_diff [<path>]` - Show git diff
+- `/provider <ollama|gemini>` - Switch between LLM providers
 - `/quit` - Exit application
 
 ### Dependencies
 - `tokio` - Async runtime
 - `reqwest` - HTTP client for Ollama API calls
+- `gemini-client-api` - Google Gemini API client
 - `serde`/`serde_json` - JSON serialization for API requests
 - `anyhow` - Error handling
 - `regex` - S/R block parsing

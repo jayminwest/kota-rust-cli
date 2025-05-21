@@ -8,14 +8,22 @@ mod editor;
 mod cmd_parser;
 
 use context::ContextManager;
+use llm::LlmProvider;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("KOTA - Type '/quit' to exit.");
-    println!("Commands: /add_file <path>, /add_snippet <text>, /show_context, /clear_context, /run <command>, /run_add <command>, /git_add <file_path>, /git_commit \"<message>\", /git_status, /git_diff [<path>]");
+    println!("Commands: /add_file <path>, /add_snippet <text>, /show_context, /clear_context, /run <command>, /run_add <command>, /git_add <file_path>, /git_commit \"<message>\", /git_status, /git_diff [<path>], /provider <ollama|gemini>");
     println!("Features: Ask KOTA to edit files using Search/Replace blocks - KOTA will detect and ask for confirmation before applying changes.");
     
     let mut context_manager = ContextManager::new();
+    let mut current_provider = LlmProvider::default();
+    
+    // Check for environment variables and show provider status
+    match current_provider {
+        LlmProvider::Ollama => println!("🦙 Using Ollama (default)"),
+        LlmProvider::Gemini => println!("🧠 Using Google Gemini"),
+    }
 
     loop {
         println!("You: ");
@@ -258,6 +266,35 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                 }
+                "/provider" => {
+                    if arg.is_empty() {
+                        match current_provider {
+                            LlmProvider::Ollama => println!("Current provider: Ollama"),
+                            LlmProvider::Gemini => println!("Current provider: Google Gemini"),
+                        }
+                        println!("Usage: /provider <ollama|gemini>");
+                    } else {
+                        match arg.to_lowercase().as_str() {
+                            "ollama" => {
+                                current_provider = LlmProvider::Ollama;
+                                println!("🦙 Switched to Ollama");
+                            }
+                            "gemini" => {
+                                // Check if GEMINI_API_KEY is set
+                                if std::env::var("GEMINI_API_KEY").is_ok() {
+                                    current_provider = LlmProvider::Gemini;
+                                    println!("🧠 Switched to Google Gemini");
+                                } else {
+                                    eprintln!("❌ GEMINI_API_KEY environment variable not found.");
+                                    eprintln!("Please set your Gemini API key: export GEMINI_API_KEY=your_api_key");
+                                }
+                            }
+                            _ => {
+                                println!("Unknown provider: {}. Use 'ollama' or 'gemini'", arg);
+                            }
+                        }
+                    }
+                }
                 _ => {
                     println!("Unknown command: {}", command);
                 }
@@ -265,7 +302,7 @@ async fn main() -> anyhow::Result<()> {
         } else {
             // Not a command, treat as a prompt for the LLM
             let current_context = context_manager.get_formatted_context();
-            match llm::ask_model(trimmed_input, &current_context).await {
+            match llm::ask_model_with_provider(trimmed_input, &current_context, current_provider.clone()).await {
                 Ok(response) => {
                     // Always display the response first
                     println!("KOTA: {}", response);
@@ -314,18 +351,30 @@ async fn main() -> anyhow::Result<()> {
                                                         Ok((stdout, stderr, success)) => {
                                                             if !stdout.trim().is_empty() {
                                                                 println!("--- stdout ---\n{}\n--- end stdout ---", stdout.trim());
+                                                                // Add stdout to context for the model to see
+                                                                context_manager.add_snippet(format!("Command: {}\nOutput:\n{}", cmd_block.command, stdout.trim()));
                                                             }
                                                             if !stderr.trim().is_empty() {
                                                                 eprintln!("--- stderr ---\n{}\n--- end stderr ---", stderr.trim());
+                                                                // Add stderr to context if it's significant (not just warnings)
+                                                                if !success || stderr.len() > 100 {
+                                                                    context_manager.add_snippet(format!("Command: {}\nError output:\n{}", cmd_block.command, stderr.trim()));
+                                                                }
                                                             }
                                                             if success {
                                                                 println!("✅ Command completed successfully");
                                                             } else {
                                                                 println!("❌ Command failed");
+                                                                // Always add failed commands to context
+                                                                if stdout.trim().is_empty() && stderr.trim().is_empty() {
+                                                                    context_manager.add_snippet(format!("Command failed: {}", cmd_block.command));
+                                                                }
                                                             }
                                                         }
                                                         Err(e) => {
                                                             eprintln!("❌ Failed to execute command: {}", e);
+                                                            // Add execution error to context
+                                                            context_manager.add_snippet(format!("Command execution failed: {} - Error: {}", cmd_block.command, e));
                                                         }
                                                     }
                                                     break;
