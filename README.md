@@ -1,5 +1,9 @@
 # KOTA Rust CLI
 
+<p align="center">
+  <img src="kota_image.png" alt="KOTA Logo" width="400">
+</p>
+
 KOTA is an interactive Rust CLI that integrates with local Ollama LLM instances for AI-assisted code editing and development tasks. It operates as a REPL shell with intelligent file editing, command execution, and context management capabilities.
 
 ## Features
