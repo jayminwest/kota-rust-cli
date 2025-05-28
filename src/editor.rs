@@ -126,7 +126,7 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
     let mut quit_applying = false;
     let mut applied_files = Vec::new();
 
-    for (_i, block) in blocks.iter().enumerate() {
+    for block in blocks.iter() {
         if quit_applying {
             break;
         }

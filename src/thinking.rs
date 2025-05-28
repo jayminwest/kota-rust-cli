@@ -26,16 +26,8 @@ impl ThinkingIndicator {
         Self { spinner }
     }
     
-    pub fn update_message(&self, message: &str) {
-        self.spinner.set_message(message.dimmed().to_string());
-    }
-    
     pub fn finish(&self) {
         self.spinner.finish_and_clear();
-    }
-    
-    pub fn finish_with_message(&self, message: &str) {
-        self.spinner.finish_with_message(message.to_string());
     }
 }
 
@@ -46,10 +38,6 @@ impl Drop for ThinkingIndicator {
 }
 
 // Convenience functions for common use cases
-pub fn show_thinking(message: &str) -> ThinkingIndicator {
-    ThinkingIndicator::new(message)
-}
-
 pub fn show_llm_thinking() -> ThinkingIndicator {
     ThinkingIndicator::new("Thinking...")
 }

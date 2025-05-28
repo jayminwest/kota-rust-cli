@@ -5,7 +5,6 @@ use anyhow::Result;
 #[derive(Debug, Clone)]
 pub struct CommandBlock {
     pub command: String,
-    pub description: Option<String>,
 }
 
 pub fn parse_command_blocks(response: &str) -> Result<Vec<CommandBlock>> {
@@ -41,7 +40,6 @@ pub fn parse_command_blocks(response: &str) -> Result<Vec<CommandBlock>> {
                 let command = command_lines.join(" && ");
                 blocks.push(CommandBlock {
                     command,
-                    description: None,
                 });
             }
         } else {

@@ -100,10 +100,8 @@ async fn main() -> anyhow::Result<()> {
                 "/add_file" => {
                     if arg.is_empty() {
                         println!("{} /add_file <path_to_file>", "Usage:".yellow());
-                    } else {
-                        if let Err(e) = context_manager.add_file(arg) {
-                            println!("{} {}", "Error:".red(), e);
-                        }
+                    } else if let Err(e) = context_manager.add_file(arg) {
+                        println!("{} {}", "Error:".red(), e);
                     }
                 }
                 "/add_snippet" => {
@@ -374,7 +372,7 @@ async fn main() -> anyhow::Result<()> {
                                     current_provider = LlmProvider::Gemini;
                                     println!("{} {}", "Provider:".green(), "Google Gemini (cloud)".cyan());
                                 } else {
-                                    println!("{} {}", "Missing:".red(), "GEMINI_API_KEY environment variable");
+                                    println!("{} GEMINI_API_KEY environment variable", "Missing:".red());
                                     println!("{} export GEMINI_API_KEY=your_api_key", "Set with:".dimmed());
                                 }
                             }
@@ -405,7 +403,7 @@ async fn main() -> anyhow::Result<()> {
                     println!("{}", "─".repeat(60).dimmed());
                     
                     // Try to render as markdown, fall back to plain text if it fails
-                    if let Err(_) = render_markdown(&response) {
+                    if render_markdown(&response).is_err() {
                         println!("{}", response);
                     }
                     

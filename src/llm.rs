@@ -9,16 +9,13 @@ use gemini_client_api::gemini::{
 use crate::prompts::PromptsConfig;
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub enum LlmProvider {
     Ollama,
+    #[default]
     Gemini,
 }
 
-impl Default for LlmProvider {
-    fn default() -> Self {
-        LlmProvider::Gemini
-    }
-}
 
 // Structs for Ollama's /api/chat endpoint (non-streaming)
 #[derive(Serialize)]
@@ -42,7 +39,6 @@ struct OllamaChatResponse {
 
 #[derive(Deserialize)]
 struct OllamaResponseMessage {
-    role: String,
     content: String,
 }
 
@@ -51,9 +47,6 @@ const DEFAULT_OLLAMA_MODEL: &str = "qwen3:8b";
 const DEFAULT_GEMINI_MODEL: &str = "gemini-2.5-pro-preview-05-06";
 const GEMINI_COMMIT_MODEL: &str = "gemini-2.5-flash-preview-05-20";
 
-pub async fn ask_model(user_prompt: &str, context_str: &str) -> anyhow::Result<String> {
-    ask_model_with_provider(user_prompt, context_str, LlmProvider::default()).await
-}
 
 pub async fn ask_model_with_provider(user_prompt: &str, context_str: &str, provider: LlmProvider) -> anyhow::Result<String> {
     let prompts_config = PromptsConfig::load().unwrap_or_default();
