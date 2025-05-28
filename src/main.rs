@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::process::Command;
 use colored::*;
-use termimad::*;
+use termimad::MadSkin;
 
 mod llm;
 mod context;
@@ -21,6 +21,12 @@ fn render_markdown(content: &str) -> anyhow::Result<()> {
     
     // Import the correct Color type from crossterm
     use termimad::crossterm::style::Color;
+    use termimad::crossterm::terminal;
+    
+    // Get terminal dimensions
+    let (width, _height) = terminal::size().unwrap_or((80, 24));
+    // Ensure minimum width for proper rendering
+    let width = width.max(40);
     
     // Customize colors to match the existing UI theme using termimad's color functions
     skin.bold.set_fg(Color::White);
@@ -44,8 +50,10 @@ fn render_markdown(content: &str) -> anyhow::Result<()> {
     // Style quotes
     skin.quote_mark.set_fg(Color::AnsiValue(244)); // Dimmed gray
     
-    // Print the markdown content with proper formatting
-    println!("{}", skin.term_text(content));
+    // Print the markdown content with proper formatting using dynamic width
+    // The term_text method automatically handles the width
+    let formatted = skin.text(content, Some(width as usize));
+    print!("{}", formatted);
     
     Ok(())
 }
@@ -345,6 +353,7 @@ async fn main() -> anyhow::Result<()> {
                     
                     println!("{}", "General:".bright_yellow().bold());
                     println!("  {} - Show this help message", "/help".cyan());
+                    println!("  {} - Show KOTA version", "/version".cyan());
                     println!("  {} - Exit KOTA", "/quit".cyan());
                     println!();
                     
@@ -381,6 +390,10 @@ async fn main() -> anyhow::Result<()> {
                             }
                         }
                     }
+                }
+                "/version" => {
+                    // Retrieve version from Cargo.toml at compile time
+                    println!("KOTA version: {}", env!("CARGO_PKG_VERSION"));
                 }
                 _ => {
                     println!("Unknown command: {}", command);
