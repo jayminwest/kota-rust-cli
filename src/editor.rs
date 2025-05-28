@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_apply_sr_block_not_found() {
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
         let content = "line1\nsome content\nline3";
         fs::write(temp_file.path(), content).unwrap();
 
@@ -259,5 +259,172 @@ mod tests {
         };
 
         assert!(apply_sr_block(&block).is_err());
+    }
+
+    #[test]
+    fn test_apply_sr_block_multiple_occurrences() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let content = "duplicate\nline2\nduplicate\nline4";
+        fs::write(temp_file.path(), content).unwrap();
+
+        let block = SearchReplaceBlock {
+            file_path: temp_file.path().to_string_lossy().to_string(),
+            search_lines: "duplicate".to_string(),
+            replace_lines: "replaced".to_string(),
+        };
+
+        assert!(apply_sr_block(&block).is_ok());
+        
+        let new_content = fs::read_to_string(temp_file.path()).unwrap();
+        // Should only replace first occurrence
+        assert_eq!(new_content, "replaced\nline2\nduplicate\nline4");
+    }
+
+    #[test]
+    fn test_apply_sr_block_empty_search() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let content = "line1\nline2\nline3";
+        fs::write(temp_file.path(), content).unwrap();
+
+        let block = SearchReplaceBlock {
+            file_path: temp_file.path().to_string_lossy().to_string(),
+            search_lines: "".to_string(),
+            replace_lines: "inserted".to_string(),
+        };
+
+        assert!(apply_sr_block(&block).is_ok());
+        
+        let new_content = fs::read_to_string(temp_file.path()).unwrap();
+        // Empty search should insert at beginning
+        assert_eq!(new_content, "insertedline1\nline2\nline3");
+    }
+
+    #[test]
+    fn test_apply_sr_block_empty_replace() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let content = "line1\nto_delete\nline3";
+        fs::write(temp_file.path(), content).unwrap();
+
+        let block = SearchReplaceBlock {
+            file_path: temp_file.path().to_string_lossy().to_string(),
+            search_lines: "to_delete".to_string(),
+            replace_lines: "".to_string(),
+        };
+
+        assert!(apply_sr_block(&block).is_ok());
+        
+        let new_content = fs::read_to_string(temp_file.path()).unwrap();
+        // Should delete the content
+        assert_eq!(new_content, "line1\n\nline3");
+    }
+
+    #[test]
+    fn test_apply_sr_block_multiline() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let content = "line1\nold line 1\nold line 2\nline4";
+        fs::write(temp_file.path(), content).unwrap();
+
+        let block = SearchReplaceBlock {
+            file_path: temp_file.path().to_string_lossy().to_string(),
+            search_lines: "old line 1\nold line 2".to_string(),
+            replace_lines: "new line 1\nnew line 2\nnew line 3".to_string(),
+        };
+
+        assert!(apply_sr_block(&block).is_ok());
+        
+        let new_content = fs::read_to_string(temp_file.path()).unwrap();
+        assert_eq!(new_content, "line1\nnew line 1\nnew line 2\nnew line 3\nline4");
+    }
+
+    #[test]
+    fn test_apply_sr_block_file_not_found() {
+        let block = SearchReplaceBlock {
+            file_path: "/nonexistent/file.txt".to_string(),
+            search_lines: "search".to_string(),
+            replace_lines: "replace".to_string(),
+        };
+
+        let result = apply_sr_block(&block);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Failed to read file"));
+    }
+
+    #[test]
+    fn test_apply_sr_block_special_characters() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let content = r#"let regex = r"^.*\d+.*$";"#;
+        fs::write(temp_file.path(), content).unwrap();
+
+        let block = SearchReplaceBlock {
+            file_path: temp_file.path().to_string_lossy().to_string(),
+            search_lines: r#"r"^.*\d+.*$""#.to_string(),
+            replace_lines: r#"r"^.*\w+.*$""#.to_string(),
+        };
+
+        assert!(apply_sr_block(&block).is_ok());
+        
+        let new_content = fs::read_to_string(temp_file.path()).unwrap();
+        assert!(new_content.contains(r#"r"^.*\w+.*$""#));
+    }
+
+    #[test]
+    fn test_apply_sr_block_whitespace_preservation() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let content = "    function old() {\n        return \"old\";\n    }";
+        fs::write(temp_file.path(), content).unwrap();
+
+        let block = SearchReplaceBlock {
+            file_path: temp_file.path().to_string_lossy().to_string(),
+            search_lines: "    function old() {\n        return \"old\";\n    }".to_string(),
+            replace_lines: "    function new() {\n        return \"new\";\n    }".to_string(),
+        };
+
+        assert!(apply_sr_block(&block).is_ok());
+        
+        let new_content = fs::read_to_string(temp_file.path()).unwrap();
+        assert!(new_content.contains("function new()"));
+        assert!(new_content.contains("return \"new\""));
+    }
+
+    #[test]
+    fn test_apply_sr_block_substring_matching() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let content = "line1\nsome content here\nline3";
+        fs::write(temp_file.path(), content).unwrap();
+
+        // Substring matching works - "some content" matches within "some content here"
+        let block = SearchReplaceBlock {
+            file_path: temp_file.path().to_string_lossy().to_string(),
+            search_lines: "some content".to_string(),
+            replace_lines: "new content".to_string(),
+        };
+
+        assert!(apply_sr_block(&block).is_ok());
+        
+        let new_content = fs::read_to_string(temp_file.path()).unwrap();
+        // "some content" gets replaced with "new content", leaving "here"
+        assert_eq!(new_content, "line1\nnew content here\nline3");
+    }
+
+    #[test]
+    fn test_apply_sr_block_no_match() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let content = "line1\nsome content here\nline3";
+        fs::write(temp_file.path(), content).unwrap();
+
+        // This should genuinely not match
+        let block = SearchReplaceBlock {
+            file_path: temp_file.path().to_string_lossy().to_string(),
+            search_lines: "completely different text".to_string(),
+            replace_lines: "new content".to_string(),
+        };
+
+        let result = apply_sr_block(&block);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
+        
+        // Verify file wasn't changed
+        let unchanged_content = fs::read_to_string(temp_file.path()).unwrap();
+        assert_eq!(unchanged_content, "line1\nsome content here\nline3");
     }
 }
