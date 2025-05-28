@@ -361,6 +361,12 @@ async fn main() -> anyhow::Result<()> {
                     println!("  {} - Ask AI to edit files or execute commands", "Type any message".cyan());
                     println!("  {} - AI can suggest file edits and shell commands", "".dimmed());
                     println!();
+                    
+                    println!("{}", "Important: File Access Control".bright_red().bold());
+                    println!("  {} - Files must be added to context before editing", "⚠️ ".yellow());
+                    println!("  {} - Use /add_file before asking AI to edit", "".dimmed());
+                    println!("  {} - Edits to files not in context will be blocked", "".dimmed());
+                    println!();
                 }
                 "/provider" => {
                     if arg.is_empty() {

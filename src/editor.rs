@@ -28,7 +28,7 @@ pub fn apply_sr_block(block: &SearchReplaceBlock) -> Result<()> {
     Ok(())
 }
 
-async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) -> Result<()> {
+async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) -> Result<bool> {
     println!();
     println!("{}", "─".repeat(60).dimmed());
     println!("{}", "Creating commit...".bright_yellow());
@@ -63,7 +63,7 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
     
     if git_diff.trim().is_empty() {
         println!("Warning: No changes to commit (files may not have been modified)");
-        return Ok(());
+        return Ok(false);
     }
     
     // Generate commit message using LLM
@@ -83,9 +83,16 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
             
             if commit_output.status.success() {
                 println!("Commit created successfully!");
+                // Check if this is a self-modifying commit
+                let is_self_modifying = modified_files.iter().any(|f| {
+                    f.starts_with("src/") && f.ends_with(".rs") || 
+                    f == "prompts.toml" ||
+                    f == "Cargo.toml"
+                });
+                Ok(is_self_modifying)
             } else {
                 let stderr = String::from_utf8_lossy(&commit_output.stderr);
-                return Err(anyhow::anyhow!("Git commit failed: {}", stderr));
+                Err(anyhow::anyhow!("Git commit failed: {}", stderr))
             }
         }
         Err(e) => {
@@ -104,14 +111,19 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
             
             if commit_output.status.success() {
                 println!("Fallback commit created successfully!");
+                // Check if this is a self-modifying commit
+                let is_self_modifying = modified_files.iter().any(|f| {
+                    f.starts_with("src/") && f.ends_with(".rs") || 
+                    f == "prompts.toml" ||
+                    f == "Cargo.toml"
+                });
+                Ok(is_self_modifying)
             } else {
                 let stderr = String::from_utf8_lossy(&commit_output.stderr);
-                return Err(anyhow::anyhow!("Fallback git commit failed: {}", stderr));
+                Err(anyhow::anyhow!("Fallback git commit failed: {}", stderr))
             }
         }
     }
-    
-    Ok(())
 }
 
 pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_prompt: &str, context_manager: &crate::context::ContextManager) -> Result<()> {
@@ -135,7 +147,7 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
         let file_in_context = context_manager.is_file_in_context(&block.file_path);
         
         println!();
-        let warning = if !file_in_context { " (not in context)".red() } else { "".normal() };
+        let warning = if !file_in_context { " (NOT IN CONTEXT - BLOCKED)".red().bold() } else { "".normal() };
         println!("{}{}", block.file_path.bright_white().bold(), warning);
         println!("{}", "─".repeat(40).dimmed());
         
@@ -152,15 +164,21 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
         
         println!("{}", "─".repeat(40).dimmed());
         
+        // Block edits to files not in context
+        if !file_in_context {
+            println!("{}", "❌ BLOCKED: Cannot edit file not in context!".red().bold());
+            println!("{}", "To edit this file, first run:".yellow());
+            println!("  {} {}", "/add_file".bright_cyan(), block.file_path.bright_white());
+            println!("{} {}", "Skipped:".red(), block.file_path);
+            continue;
+        }
+        
         // Get user confirmation unless apply_all is set
         let should_apply = if apply_all {
             true
         } else {
             loop {
-                // Warn about files not in context
-                if !file_in_context {
-                    println!("{}", "Warning: File not in context".yellow());
-                }
+                // No need for warning since we already block files not in context
                 
                 print!("{} ", "Apply? (y/n/a/q):".bright_white());
                 io::stdout().flush()?;
@@ -213,9 +231,21 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
     
     // Create automatic commit if any files were modified
     if !applied_files.is_empty() {
-        if let Err(e) = create_auto_commit(original_prompt, &applied_files).await {
-            println!("Warning: Auto-commit failed: {}", e);
-            println!("You can manually commit the changes with: git add . && git commit");
+        match create_auto_commit(original_prompt, &applied_files).await {
+            Ok(is_self_modifying) => {
+                if is_self_modifying {
+                    println!();
+                    println!("{}", "─".repeat(60).dimmed());
+                    println!("{}", "Self-modification complete!".bright_green().bold());
+                    println!("KOTA needs to be rebuilt and restarted for changes to take effect.");
+                    println!("Exiting with code 123 to signal restart...");
+                    std::process::exit(123);
+                }
+            }
+            Err(e) => {
+                println!("Warning: Auto-commit failed: {}", e);
+                println!("You can manually commit the changes with: git add . && git commit");
+            }
         }
     }
     

@@ -7,6 +7,7 @@ use gemini_client_api::gemini::{
     types::sessions::Session,
 };
 use crate::prompts::PromptsConfig;
+use tokio::time::timeout;
 
 #[derive(Debug, Clone)]
 #[derive(Default)]
@@ -47,6 +48,11 @@ const DEFAULT_OLLAMA_MODEL: &str = "qwen3:8b";
 const DEFAULT_GEMINI_MODEL: &str = "gemini-2.5-pro-preview-05-06";
 const GEMINI_COMMIT_MODEL: &str = "gemini-2.5-flash-preview-05-20";
 
+// Timeout configuration
+// Ollama: 120 seconds for main requests, 60 seconds for commits
+// Gemini: 360 seconds for main requests (3x Ollama), 180 seconds for commits
+const GEMINI_TIMEOUT_SECS: u64 = 360;
+
 
 pub async fn ask_model_with_provider(user_prompt: &str, context_str: &str, provider: LlmProvider) -> anyhow::Result<String> {
     let prompts_config = PromptsConfig::load().unwrap_or_default();
@@ -71,8 +77,14 @@ async fn ask_gemini_model(user_prompt: &str, context_str: &str, prompts_config: 
         format!("{}\n\n{}\n\nUser: {}", system_instructions, context_str, user_prompt)
     };
     
-    let response = ai.ask(session.ask_string(&full_prompt)).await
-        .map_err(|e| anyhow::anyhow!("Gemini API error: {}", e))?;
+    // Wrap the API call with a timeout
+    let response = timeout(
+        Duration::from_secs(GEMINI_TIMEOUT_SECS),
+        ai.ask(session.ask_string(&full_prompt))
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("Gemini API request timed out after {} seconds", GEMINI_TIMEOUT_SECS))?
+    .map_err(|e| anyhow::anyhow!("Gemini API error: {}", e))?;
     
     Ok(response.get_text(""))
 }
@@ -178,8 +190,14 @@ async fn generate_commit_message_gemini(original_prompt: &str, git_diff: &str, a
     
     let prompt = prompts_config.get_gemini_commit_prompt(original_prompt, git_diff);
     
-    let response = ai.ask(session.ask_string(&prompt)).await
-        .map_err(|e| anyhow::anyhow!("Gemini commit generation error: {}", e))?;
+    // Wrap the API call with a timeout (use half the main timeout for commit messages)
+    let response = timeout(
+        Duration::from_secs(GEMINI_TIMEOUT_SECS / 2),
+        ai.ask(session.ask_string(&prompt))
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("Gemini commit generation timed out after {} seconds", GEMINI_TIMEOUT_SECS / 2))?
+    .map_err(|e| anyhow::anyhow!("Gemini commit generation error: {}", e))?;
     
     // Clean up the response (remove any extra whitespace/newlines)
     let commit_message = response.get_text("").trim().to_string();

@@ -6,6 +6,28 @@
 
 KOTA is an interactive Rust CLI that integrates with local Ollama LLM instances for AI-assisted code editing and development tasks. It operates as a REPL shell with intelligent file editing, command execution, and context management capabilities.
 
+## Philosophy: A Cognitive Partner in Code
+
+KOTA is designed to be more than just a command-line tool – it's a cognitive partner that augments your capabilities in software development and complex knowledge work. Built with the vision of becoming an increasingly autonomous AI agent, KOTA embodies several key principles:
+
+### 🚀 Self-Improving System
+KOTA has the unique ability to modify its own source code. When guided by users, it can iteratively enhance its capabilities, add new features, and evolve over time. This self-modification loop (supported by the `run_kota.sh` wrapper) represents a step toward truly adaptive software.
+
+### 🧠 Deep Contextual Understanding
+The tool excels at managing and utilizing context – from your project files to its own source code and interaction history. Through its context management system, KOTA maintains awareness of what it's working on and can make informed, relevant suggestions.
+
+### 🤖 Intelligent Autonomy
+While remaining user-directed, KOTA strives for increasing autonomy. It can break down complex tasks, execute multi-step operations, and leverage command outputs to make follow-up decisions – all with appropriate user oversight.
+
+### 🛡️ Safety & Control
+Despite its autonomous capabilities, KOTA prioritizes user control and safety:
+- **File Access Control**: Can only edit files explicitly added to its context
+- **Confirmation Required**: All file changes and commands require user approval
+- **Transparent Operations**: Shows exactly what it's doing and why
+
+### 🔮 Future Vision
+KOTA represents an exploration of distributed cognition – where human and AI capabilities merge to create something more powerful than either alone. It's a step toward a future where AI partners can handle significant portions of complex work, allowing humans to focus on higher-level thinking and creativity.
+
 ## Features
 
 - **AI-Powered Code Editing**: Uses Search/Replace blocks to suggest and apply precise code changes
@@ -119,6 +141,26 @@ cargo build
 # Review and approve changes
 Apply this change? (y/n/a/q) [yes/no/apply_all/quit]: y
 Execute this command? (y/n/q) [yes/no/quit]: y
+```
+
+### Self-Modification Workflow
+
+KOTA can modify its own source code to add new features or improve itself:
+
+```bash
+# Use the wrapper script for automatic rebuild/restart
+./run_kota.sh
+
+# Inside KOTA, ask it to improve itself
+You: Add a new command /version that shows the current version of KOTA
+
+# KOTA will:
+# 1. Request to read its own source: /add_file src/main.rs
+# 2. Generate S/R blocks to add the feature
+# 3. Apply changes and create a commit
+# 4. Exit with code 123 to trigger rebuild
+
+# The wrapper script automatically rebuilds and restarts KOTA with new features!
 ```
 
 ## Architecture
