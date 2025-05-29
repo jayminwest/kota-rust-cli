@@ -19,14 +19,17 @@ fn render_markdown(content: &str) -> anyhow::Result<()> {
     // Create a markdown renderer with customized skin
     let mut skin = MadSkin::default();
     
+    // Set consistent spacing and wrapping
+    skin.paragraph.align = termimad::Alignment::Left;
+    
     // Import the correct Color type from crossterm
     use termimad::crossterm::style::Color;
     use termimad::crossterm::terminal;
     
     // Get terminal dimensions
     let (width, _height) = terminal::size().unwrap_or((80, 24));
-    // Ensure minimum width for proper rendering
-    let width = width.max(40);
+    // Ensure minimum width for proper rendering and add padding
+    let width = width.saturating_sub(4).max(40); // Subtract 4 for terminal padding
     
     // Customize colors to match the existing UI theme using termimad's color functions
     skin.bold.set_fg(Color::White);
@@ -44,14 +47,20 @@ fn render_markdown(content: &str) -> anyhow::Result<()> {
     skin.inline_code.set_bg(Color::AnsiValue(237)); // Slightly lighter dark gray
     skin.inline_code.set_fg(Color::AnsiValue(252)); // Light gray text
     
-    // Style lists
+    // Style lists with better spacing
     skin.bullet.set_fg(Color::Cyan);
+    skin.paragraph.align = termimad::Alignment::Left;
+    
     
     // Style quotes
     skin.quote_mark.set_fg(Color::AnsiValue(244)); // Dimmed gray
     
+    // Ensure consistent paragraph formatting with no extra margins
+    skin.paragraph.left_margin = 0;
+    skin.paragraph.right_margin = 0;
+    
     // Print the markdown content with proper formatting using dynamic width
-    // The term_text method automatically handles the width
+    // The text method properly handles width constraints
     let formatted = skin.text(content, Some(width as usize));
     print!("{}", formatted);
     
@@ -61,9 +70,10 @@ fn render_markdown(content: &str) -> anyhow::Result<()> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("{}", "═".repeat(60).bright_blue());
+    let header_width = 60;
+    println!("{}", "═".repeat(header_width).bright_blue());
     println!("{}", "KOTA - AI Coding Assistant".bright_white().bold());
-    println!("{}", "═".repeat(60).bright_blue());
+    println!("{}", "═".repeat(header_width).bright_blue());
     
     let mut context_manager = ContextManager::new();
     let mut current_provider = LlmProvider::default();
