@@ -4,7 +4,7 @@
   <img src="kota_image.png" alt="KOTA Logo" width="400">
 </p>
 
-KOTA is an interactive Rust CLI that integrates with local Ollama LLM instances for AI-assisted code editing and development tasks. It operates as a REPL shell with intelligent file editing, command execution, and context management capabilities.
+KOTA is an advanced interactive Rust CLI that provides both a sophisticated Terminal User Interface (TUI) and a classic command-line interface for AI-assisted code editing and development tasks. It integrates with multiple LLM providers and features comprehensive vim-style navigation, intelligent file editing, command execution, and context management capabilities.
 
 ## Philosophy: A Cognitive Partner in Code
 
@@ -33,14 +33,27 @@ KOTA represents an exploration of distributed cognition – where human and AI c
 
 ## Features
 
+### 🖥️ Advanced Terminal User Interface (TUI)
+- **Multi-pane layout**: Chat history, terminal output, context view, and file browser
+- **Vim-style navigation**: Full hjkl navigation with arrow key alternatives
+- **Command execution**: Terminal pane displays suggested commands, execute with 'x' key
+- **Interactive file browser**: Navigate directories, add files to context
+- **Real-time updates**: Live display of time, git branch, file counts
+- **Emoji-free design**: Clean text-based indicators for compatibility
+
+### 🤖 AI-Powered Development
 - **AI-Powered Code Editing**: Uses Search/Replace blocks to suggest and apply precise code changes
-- **Command Execution**: LLMs can suggest and execute shell commands with user confirmation, and see their output for follow-up actions  
+- **Command Suggestions**: LLMs suggest shell commands displayed in terminal pane for execution
 - **Context Management**: Maintain conversation context by adding files and code snippets
-- **File Safety**: Warns when editing files not explicitly added to context
-- **Auto-Commit**: Automatically creates git commits with AI-generated commit messages (uses Gemini Flash for fast generation)
+- **Auto-Commit**: Automatically creates git commits with AI-generated commit messages
 - **Multiple LLM Providers**: Works with both Google Gemini (cloud, default) and Ollama (local)
-  - Google Gemini: Cloud-based models (default: gemini-2.5-pro-preview-05-06)
-  - Ollama: Local models (qwen3:8b)
+
+### 🔧 Developer Experience
+- **Vim Bindings**: Full vim-style editing and navigation throughout the interface
+- **Markdown Rendering**: Enhanced display of headers, code blocks, and formatting
+- **File Safety**: Strict access control - can only edit files explicitly added to context
+- **Checkbox Feedback**: Clear visual indicators for context operations (`Context: [x] filename`)
+- **Zero Warnings**: Passes strictest Rust linting with 45+ comprehensive tests
 
 ## Prerequisites
 
@@ -70,12 +83,30 @@ cargo build --release
 
 ## Usage
 
-Start KOTA:
+### Start KOTA (TUI Mode - Default)
 ```bash
 cargo run
 ```
 
-### Available Commands
+The TUI provides an interactive multi-pane interface:
+
+#### TUI Navigation
+- **i** - Enter insert mode to type messages
+- **Esc** - Return to normal mode
+- **f** - Enter file browser mode
+- **Tab** - Cycle through panes (Chat → Terminal → Context → File Browser)
+- **hjkl / ↑↓←→** - Navigate and scroll within panes
+- **x** - Execute suggested commands (when terminal pane focused)
+- **?** - Show help and keyboard shortcuts
+- **Ctrl+Q** - Quit application
+
+#### TUI Workflow
+1. **Browse files**: Press 'f' to open file browser, navigate with hjkl, Enter to add files
+2. **Chat with AI**: Press 'i' to enter insert mode, type your message, press Enter
+3. **Execute commands**: AI suggestions appear in terminal pane, press Tab to focus, 'x' to execute
+4. **Review changes**: File edits are applied with confirmation, auto-commits created
+
+### Available Commands (Both TUI and CLI)
 
 - `/add_file <path>` - Add file contents to context
 - `/add_snippet <text>` - Add text snippet to context  
@@ -104,12 +135,17 @@ The AI can respond with:
 2. **Commands** to build, test, or manage the project
 3. **Explanations** and guidance
 
-### Example Workflow
+### Example TUI Workflow
+
+1. **Start KOTA**: `cargo run` (launches TUI by default)
+2. **Add files to context**: Press 'f', navigate to files, press Enter to add
+3. **Send message**: Press 'i', type "Add better error handling", press Enter
+4. **Execute commands**: AI suggestions appear in terminal, press Tab to focus terminal, 'x' to execute
+5. **Review changes**: File edits are applied automatically after confirmation
+
+### Example CLI Workflow
 
 ```bash
-# Switch LLM provider if needed (Gemini is default)
-/provider ollama  # or /provider gemini
-
 # Add files to context
 /add_file src/main.rs
 /add_file Cargo.toml
@@ -168,11 +204,21 @@ You: Add a new command /version that shows the current version of KOTA
 
 ## Architecture
 
-- **LLM Integration**: Communicates with Ollama API for AI responses
+### Core Components
+- **Terminal User Interface**: Advanced multi-pane TUI with vim navigation
+- **LLM Integration**: Supports Google Gemini (cloud) and Ollama (local)
 - **Search/Replace Parser**: Parses structured file edit suggestions
 - **Command Parser**: Parses and executes shell commands with confirmation
 - **File Editor**: Handles interactive file modifications with safety checks
-- **Context Manager**: Maintains conversation context and tracks added files
+- **Context Manager**: Maintains conversation context with strict access control
+- **File Browser**: Interactive navigation with sudo support
+
+### Quality Standards
+- **Zero Clippy Warnings**: Passes `cargo clippy -- -D warnings` with no issues
+- **Comprehensive Testing**: 45+ tests covering all core functionality
+- **Dead Code Elimination**: No unused code, methods, or dependencies
+- **Memory Safety**: Safe async patterns with proper mutex handling
+- **Error Handling**: Robust error handling with `anyhow` throughout
 
 ## Development
 
@@ -186,26 +232,37 @@ cargo test
 # Format code
 cargo fmt
 
-# Lint code
-cargo clippy
+# Lint code (strict mode)
+cargo clippy -- -D warnings
 ```
 
 ## Configuration
 
-### Ollama (Local)
-KOTA connects to Ollama at `http://localhost:11434/api/chat` by default. Ensure Ollama is running with your preferred model.
-
-### Google Gemini (Cloud)
+### Google Gemini (Cloud) - Default
 Set your API key as an environment variable:
 ```bash
 export GEMINI_API_KEY=your_api_key_here
 ```
 
-Switch providers in the CLI:
+### Ollama (Local)
+Ensure Ollama is running with your preferred model:
+```bash
+ollama serve
+```
+
+### Provider Switching
+Switch providers in both TUI and CLI:
 ```bash
 /provider gemini    # Use Google Gemini (default)
 /provider ollama    # Use local Ollama
 ```
+
+### Prompts Configuration
+Customize KOTA's behavior by editing `prompts.toml`:
+- System prompts and instructions
+- Commit message generation templates
+- Command execution guidelines
+- Search/Replace format specifications
 
 ## Contributing
 
@@ -213,7 +270,8 @@ Switch providers in the CLI:
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
-5. Submit a pull request
+5. Ensure `cargo clippy -- -D warnings` passes
+6. Submit a pull request
 
 ## License
 

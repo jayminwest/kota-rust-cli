@@ -89,7 +89,7 @@ This philosophy emphasizes a journey towards a tool that is not merely reactive 
 
 ## Architecture
 
-KOTA is an interactive Rust CLI that integrates with local Ollama LLM instances for AI-assisted code editing. The application operates as a REPL shell with several key architectural components:
+KOTA is an advanced interactive Rust CLI that integrates with multiple LLM providers for AI-assisted code editing. The application offers both a Terminal User Interface (TUI) mode and a classic CLI mode, with comprehensive vim-style navigation and rich features:
 
 ### Core Components
 
@@ -116,25 +116,61 @@ command2
 
 **File Editor** (`src/editor.rs`): Handles interactive confirmation and application of parsed S/R blocks. Provides user prompts for each file change with options to apply individually, apply all, or quit. After successful application, automatically creates git commits with LLM-generated commit messages. Warns when trying to edit files not added to context.
 
-**Context Manager** (`src/context.rs`): Maintains conversation context by storing file contents and code snippets that can be referenced in LLM conversations.
+**Context Manager** (`src/context.rs`): Maintains conversation context by storing file contents and code snippets that can be referenced in LLM conversations. Features checkbox-style feedback (`Context: [x] filename`) and strict file access control.
 
 **Prompts Configuration** (`src/prompts.rs`): Manages all system prompts and instructions via TOML configuration file. Provides configurable LLM behavior, commit message generation templates, and instruction customization without code changes.
 
+**Terminal User Interface** (`src/tui.rs`): Advanced TUI featuring:
+- **Multi-pane layout**: Chat history, terminal output, context view, and file browser
+- **Vim-style navigation**: Full hjkl navigation with arrow key alternatives
+- **Command execution**: Terminal pane displays suggested commands, execute with 'x' key
+- **Emoji-free design**: Clean text-based indicators ([D] directories, [L] symlinks)
+- **Markdown rendering**: Enhanced display of headers, code blocks, and formatting
+- **Real-time updates**: Live data display (time, git branch, file counts)
+
+**File Browser** (`src/file_browser.rs`): Interactive file navigation with sudo support, permissions display, and context integration.
+
+**Dynamic Prompts** (`src/dynamic_prompts.rs`): Live system data injection including current time, working directory, git branch, and context information.
+
 ### Application Flow
 
-1. User enters commands (starting with `/`) or natural language prompts with **vim bindings** and **automatic multiline support**
-2. For commands: Direct execution (file operations, git commands, shell commands)
+#### TUI Mode (Default)
+1. **Interactive Interface**: Multi-pane TUI with chat, terminal, context, and file browser
+2. **Vim Navigation**: Use hjkl for scrolling, Tab/arrow keys for pane switching
+3. **Message Input**: Enter insert mode ('i'), type message, send with Enter
+4. **Command Suggestions**: LLM responses with command blocks show in terminal pane
+5. **Command Execution**: Focus terminal ('Tab' to cycle), press 'x' to execute suggested commands
+6. **File Operations**: Use file browser ('f' key) to add files to context
+7. **Context Management**: Real-time context display with file tracking
+8. **Visual Feedback**: Clean emoji-free design with text indicators
+
+#### Classic Mode
+1. User enters commands (starting with `/`) or natural language prompts
+2. For commands: Direct execution (file operations, git commands, shell commands)  
 3. For prompts: Send to LLM with accumulated context + S/R + command execution instructions
 4. Parse LLM response for S/R blocks and command blocks
-5. **Markdown Rendering**: Display LLM responses with rich terminal formatting including headers, bold text, code blocks, and syntax highlighting
-6. **Thinking Indicator**: Show animated spinner while LLM is processing requests and generating responses
-7. Present S/R blocks for user confirmation and apply approved file changes
-8. Present command blocks for user confirmation and execute approved commands
-9. **Command output context**: Automatically add command output to context for model awareness
-10. **Auto-commit**: When S/R blocks are applied, automatically create git commits with LLM-generated commit messages based on git diffs
+5. Present S/R blocks for user confirmation and apply approved file changes
+6. Present command blocks for user confirmation and execute approved commands
+
+#### Both Modes Feature
+- **Markdown Rendering**: Enhanced display of LLM responses with headers, code blocks, and formatting
+- **Context Integration**: Automatic context awareness and file access control
+- **Auto-commit**: Automatic git commits with LLM-generated messages after successful S/R applications
+- **Provider Switching**: Easy switching between Gemini and Ollama providers
 
 ### Available Commands
 
+#### TUI Commands
+- **i** - Enter insert mode to type messages
+- **Esc** - Return to normal mode
+- **f** - Enter file browser mode
+- **Tab** - Cycle through panes (Chat → Terminal → Context → File Browser)
+- **hjkl / ↑↓←→** - Navigate and scroll within panes
+- **x** - Execute suggested commands (when terminal pane focused)
+- **?** - Show help and keyboard shortcuts
+- **Ctrl+Q** - Quit application
+
+#### CLI Commands (Both Modes)
 - `/add_file <path>` - Add file contents to context
 - `/add_snippet <text>` - Add text snippet to context  
 - `/show_context` - Display current context
@@ -249,16 +285,31 @@ When implementing self-modification features:
 4. **Careful Changes**: Self-modifications should maintain working functionality - test changes thoroughly
 5. **Meaningful Commits**: Auto-commits for self-modifications should clearly describe the enhancement
 
+### Quality Standards
+
+KOTA maintains the highest code quality standards with comprehensive testing and linting:
+
+- **Zero Clippy Warnings**: Passes `cargo clippy -- -D warnings` with no issues
+- **Comprehensive Testing**: 45+ tests covering all core functionality
+- **Dead Code Elimination**: No unused code, methods, or dependencies
+- **Memory Safety**: Safe async patterns with proper mutex handling
+- **Error Handling**: Robust error handling with `anyhow` throughout
+
 ### Dependencies
-- `tokio` - Async runtime
-- `reqwest` - HTTP client for Ollama API calls
+- `tokio` - Async runtime with process support
+- `reqwest` - HTTP client for API calls
 - `gemini-client-api` - Google Gemini API client
 - `serde`/`serde_json` - JSON serialization for API requests
-- `anyhow` - Error handling
+- `anyhow` - Comprehensive error handling
 - `regex` - S/R block parsing
 - `colored` - Terminal color output
 - `termimad` - Markdown rendering in terminal
 - `indicatif` - Progress bars and spinners for thinking indicators
 - `reedline` - Advanced line editing with vim bindings
 - `toml` - Configuration file parsing
+- `ratatui` - Terminal user interface framework
+- `crossterm` - Cross-platform terminal manipulation
+- `chrono` - Date and time handling
+- `unicode-width`, `textwrap` - Text formatting
+- `hostname`, `whoami` - System information
 - `tempfile` - Test utilities (dev dependency)

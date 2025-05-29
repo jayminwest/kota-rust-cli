@@ -4,8 +4,8 @@ use anyhow::Context;
 use colored::*;
 
 pub struct ContextManager {
-    items: Vec<String>,
-    file_paths: Vec<String>, // Track added file paths
+    pub items: Vec<String>,
+    pub file_paths: Vec<String>, // Track added file paths
 }
 
 impl ContextManager {
@@ -31,13 +31,13 @@ impl ContextManager {
         // Track the file path
         self.file_paths.push(file_path.to_string());
         
-        println!("{} {}", "Added to context:".green(), file_path);
+        println!("{} [x] {}", "Context:".dimmed(), file_path);
         Ok(())
     }
 
     pub fn add_snippet(&mut self, snippet: String) {
         self.items.push(format!("--- Snippet --- \n{}\n--- End Snippet ---", snippet));
-        println!("{}", "Added snippet to context".green());
+        println!("{} [x] snippet", "Context:".dimmed());
     }
 
     pub fn show_context(&self) {
@@ -55,7 +55,7 @@ impl ContextManager {
     pub fn clear_context(&mut self) {
         self.items.clear();
         self.file_paths.clear();
-        println!("{}", "Context cleared".green());
+        println!("{} [ ] (all cleared)", "Context:".dimmed());
     }
     
     pub fn is_file_in_context(&self, file_path: &str) -> bool {

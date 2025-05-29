@@ -1,5 +1,6 @@
 use std::io::{self, Write};
 use std::process::Command;
+use std::env;
 use colored::*;
 use termimad::MadSkin;
 
@@ -11,6 +12,9 @@ mod cmd_parser;
 mod input;
 mod thinking;
 mod prompts;
+mod tui;
+mod dynamic_prompts;
+mod file_browser;
 
 use context::ContextManager;
 use llm::LlmProvider;
@@ -70,6 +74,45 @@ fn render_markdown(content: &str) -> anyhow::Result<()> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Parse command line arguments
+    let args: Vec<String> = env::args().collect();
+    let use_tui = args.contains(&"--tui".to_string()) || args.contains(&"-t".to_string());
+    
+    // Show help if requested
+    if args.contains(&"--help".to_string()) || args.contains(&"-h".to_string()) {
+        println!("KOTA - AI Coding Assistant");
+        println!();
+        println!("Usage: {} [OPTIONS]", args[0]);
+        println!();
+        println!("Options:");
+        println!("  -t, --tui       Launch with modern TUI interface");
+        println!("  -h, --help      Show this help message");
+        println!("  -v, --version   Show version information");
+        println!();
+        println!("Default: Launch in classic CLI mode");
+        return Ok(());
+    }
+    
+    // Show version if requested
+    if args.contains(&"--version".to_string()) || args.contains(&"-v".to_string()) {
+        println!("KOTA version: {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+    
+    let context_manager = ContextManager::new();
+    let current_provider = LlmProvider::default();
+    
+    // Launch appropriate interface
+    if use_tui {
+        // Launch modern TUI
+        tui::run_tui(context_manager, current_provider).await
+    } else {
+        // Launch classic CLI
+        run_classic_cli(context_manager, current_provider).await
+    }
+}
+
+async fn run_classic_cli(_context_manager: ContextManager, _current_provider: LlmProvider) -> anyhow::Result<()> {
     let header_width = 60;
     println!("{}", "═".repeat(header_width).bright_blue());
     println!("{}", "KOTA - AI Coding Assistant".bright_white().bold());
@@ -377,6 +420,11 @@ async fn main() -> anyhow::Result<()> {
                     println!("  {} - Use /add_file before asking AI to edit", "".dimmed());
                     println!("  {} - Edits to files not in context will be blocked", "".dimmed());
                     println!();
+                }
+                "/tui" => {
+                    // Switch to TUI mode
+                    println!("Switching to TUI mode...");
+                    return tui::run_tui(context_manager, current_provider).await;
                 }
                 "/provider" => {
                     if arg.is_empty() {

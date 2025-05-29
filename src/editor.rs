@@ -260,7 +260,7 @@ mod tests {
 
     #[test]
     fn test_apply_sr_block_success() {
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
         let content = "line1\nold content\nline3";
         fs::write(temp_file.path(), content).unwrap();
 
