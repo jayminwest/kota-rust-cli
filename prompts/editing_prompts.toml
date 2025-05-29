@@ -1,0 +1,135 @@
+# Code Editing Prompts for KOTA
+# Different editing modes and strategies for modifying code
+
+[search_replace]
+format_description = """Use SEARCH/REPLACE blocks to make precise edits to files.
+Each block must follow this exact format:
+
+file/path/to/edit.rs
+<<<<<<< SEARCH
+exact content to find
+including whitespace
+=======
+replacement content
+with modifications
+>>>>>>> REPLACE
+"""
+
+usage_guidelines = """When using search/replace blocks:
+1. Match the exact content including all whitespace, comments, and indentation
+2. Only include the specific lines that need to change plus minimal context
+3. Use multiple blocks for changes in different parts of the same file
+4. Always verify the search text exists exactly as shown
+5. For new files, use empty SEARCH section
+"""
+
+error_recovery = """If search/replace fails:
+- Check for exact whitespace and indentation matching
+- Verify the search text exists in the current file
+- Consider if the file has been modified since last read
+- Use more context lines if the match is ambiguous
+"""
+
+[whole_file]
+format_description = """Return the complete updated content of files that need changes.
+Use this format:
+
+path/to/file.rs
+```rust
+// entire file content
+// including all lines
+// nothing omitted
+```
+"""
+
+usage_guidelines = """When using whole file editing:
+1. Include the complete file content, never use ellipsis or omissions
+2. Preserve all comments, whitespace, and formatting
+3. Best for small files or major restructuring
+4. Ensure the language identifier matches the file type
+"""
+
+[command_generation]
+format_description = """Generate commands to be executed in the shell.
+Present commands in bash code blocks:
+
+```bash
+cargo build --release
+./target/release/kota --help
+```
+"""
+
+usage_guidelines = """When generating commands:
+1. Provide complete, ready-to-execute commands
+2. Include explanations of what each command does
+3. Consider the user's operating system and environment
+4. Chain related commands with && or use separate blocks
+5. Always capture and display output for user awareness
+"""
+
+[diff_patch]
+format_description = """Use unified diff format for showing changes:
+
+```diff
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -10,7 +10,7 @@
+ fn main() {
+-    println!("Hello, world!");
++    println!("Hello, KOTA!");
+ }
+```
+"""
+
+usage_guidelines = """When using diff format:
+1. Show clear context around changes
+2. Use - for removed lines and + for added lines
+3. Include file paths in the header
+4. Best for reviewing changes before applying
+"""
+
+[hybrid_mode]
+description = """Intelligently choose between editing modes based on the task:
+- Small, precise changes: Use search/replace blocks
+- Major refactoring: Use whole file mode
+- New files: Use whole file mode with clear path
+- Multiple related changes: Combine approaches as needed
+"""
+
+selection_criteria = """Choose editing mode based on:
+1. File size - larger files benefit from search/replace
+2. Change scope - extensive changes may need whole file
+3. Precision required - search/replace for surgical edits
+4. User preference - respect explicit mode requests
+"""
+
+[validation]
+pre_edit_checks = """Before making edits:
+1. Verify file is in context (/add_file if needed)
+2. Understand the current code structure
+3. Check for dependencies that might be affected
+4. Consider the impact on related files
+"""
+
+post_edit_checks = """After making edits:
+1. Ensure changes compile/parse correctly
+2. Verify the edit achieved the intended goal
+3. Check for unintended side effects
+4. Update related files if necessary
+"""
+
+[best_practices]
+general_guidelines = """Always follow these editing best practices:
+1. Make focused, single-purpose edits
+2. Preserve existing code style and conventions
+3. Add helpful comments for complex changes
+4. Consider edge cases and error handling
+5. Test changes when possible
+"""
+
+commit_practices = """When changes are applied:
+1. Group related changes logically
+2. Write clear, descriptive commit messages
+3. Include the 'why' not just the 'what'
+4. Reference issues or requests when relevant
+"""

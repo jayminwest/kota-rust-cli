@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 use anyhow::Context;
 use colored::*;
 
@@ -9,10 +10,17 @@ pub struct ContextManager {
 
 impl ContextManager {
     pub fn new() -> Self {
-        Self { 
+        let mut context = Self { 
             items: Vec::new(),
             file_paths: Vec::new(),
+        };
+        
+        // Auto-load prompts directory if it exists
+        if let Err(e) = context.load_prompts_directory() {
+            eprintln!("Warning: Failed to load prompts directory: {}", e);
         }
+        
+        context
     }
 
     pub fn add_file(&mut self, file_path: &str) -> anyhow::Result<()> {
@@ -78,6 +86,53 @@ impl ContextManager {
         }
         
         full_context
+    }
+    
+    /// Automatically load all prompt files from the prompts directory
+    fn load_prompts_directory(&mut self) -> anyhow::Result<()> {
+        let prompts_dir = Path::new("prompts");
+        
+        // Check if prompts directory exists
+        if !prompts_dir.exists() {
+            return Ok(()); // Not an error if directory doesn't exist
+        }
+        
+        // Read all .toml files in the prompts directory
+        let entries = fs::read_dir(prompts_dir)
+            .with_context(|| "Failed to read prompts directory")?;
+        
+        let mut loaded_files = Vec::new();
+        
+        for entry in entries {
+            let entry = entry?;
+            let path = entry.path();
+            
+            // Only process .toml files
+            if path.extension().and_then(|s| s.to_str()) == Some("toml") {
+                let file_path_str = path.to_str().unwrap_or_default();
+                
+                // Read the file content
+                let content = fs::read_to_string(&path)
+                    .with_context(|| format!("Failed to read prompt file: {}", file_path_str))?;
+                
+                // Add to context as a prompt file
+                self.items.push(format!("--- Prompt File: {} ---\n{}\n--- End Prompt File: {} ---", 
+                    file_path_str, content, file_path_str));
+                
+                // Don't track prompt files in file_paths as they shouldn't be edited
+                // Instead, just note that we loaded them
+                loaded_files.push(path.file_name().unwrap().to_string_lossy().to_string());
+            }
+        }
+        
+        if !loaded_files.is_empty() {
+            println!("{} Loaded {} prompt files: {}", 
+                "Auto-loaded prompts:".green(), 
+                loaded_files.len(),
+                loaded_files.join(", "));
+        }
+        
+        Ok(())
     }
     
 }

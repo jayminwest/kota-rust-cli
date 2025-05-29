@@ -1,0 +1,189 @@
+# Task Planning Prompts for KOTA
+# Prompts for organizing, planning, and executing complex tasks
+
+[task_decomposition]
+breaking_down_tasks = """When faced with complex requests:
+1. Identify the core objective
+2. Break down into discrete, manageable subtasks
+3. Determine dependencies between tasks
+4. Estimate complexity and time for each
+5. Order tasks by priority and dependency
+"""
+
+subtask_criteria = """Good subtasks should be:
+- **Atomic**: Single, focused objective
+- **Measurable**: Clear completion criteria
+- **Independent**: Minimal coupling where possible
+- **Valuable**: Contributes to the goal
+- **Estimable**: Predictable scope
+"""
+
+[planning_strategies]
+waterfall_approach = """For sequential tasks:
+1. Complete analysis and design first
+2. Implement in logical order
+3. Test after implementation
+4. Document throughout
+Best for: Well-defined requirements, critical systems
+"""
+
+iterative_approach = """For evolving requirements:
+1. Start with minimal viable solution
+2. Gather feedback early and often
+3. Refine and expand incrementally
+4. Adapt plan based on learnings
+Best for: Exploratory projects, user-facing features
+"""
+
+parallel_execution = """When tasks can run concurrently:
+1. Identify independent work streams
+2. Allocate resources effectively
+3. Set up synchronization points
+4. Monitor progress across streams
+Best for: Large projects, team coordination
+"""
+
+[project_organization]
+file_structure_planning = """Organize codebases with:
+- Logical module separation
+- Clear naming conventions
+- Consistent directory structure
+- Appropriate abstraction levels
+- Easy navigation and discovery
+"""
+
+development_workflow = """Establish effective workflows:
+1. Version control strategy
+2. Branch management approach
+3. Code review process
+4. Testing methodology
+5. Deployment pipeline
+"""
+
+[estimation_techniques]
+complexity_assessment = """Evaluate task complexity by:
+- Lines of code to write/modify
+- Number of files affected
+- External dependencies
+- Testing requirements
+- Risk factors
+"""
+
+time_estimation = """Estimate duration considering:
+- Similar past tasks
+- Technical complexity
+- Unknown factors (add buffer)
+- Testing and debugging time
+- Documentation needs
+"""
+
+[risk_management]
+risk_identification = """Common project risks:
+- Unclear requirements
+- Technical debt
+- Dependency issues
+- Performance problems
+- Security vulnerabilities
+- Timeline pressure
+"""
+
+mitigation_strategies = """Address risks through:
+- Early prototyping for unknowns
+- Regular checkpoint reviews
+- Fallback plans for critical paths
+- Conservative time estimates
+- Continuous testing
+"""
+
+[progress_tracking]
+milestone_definition = """Set meaningful milestones:
+- User-visible functionality
+- Integration points
+- Performance benchmarks
+- Quality gates
+- Deployment readiness
+"""
+
+status_reporting = """Track progress with:
+- Completed vs. remaining tasks
+- Blockers and dependencies
+- Revised estimates
+- Risk status updates
+- Next steps clarity
+"""
+
+[collaboration_planning]
+communication_strategy = """Plan for effective collaboration:
+- Regular status updates
+- Clear documentation
+- Code review assignments
+- Knowledge sharing sessions
+- Decision logging
+"""
+
+handoff_preparation = """Enable smooth transitions:
+- Comprehensive documentation
+- Setup instructions
+- Architecture decisions
+- Known issues list
+- Future enhancement ideas
+"""
+
+[execution_patterns]
+research_first = """For unknown domains:
+1. Investigate existing solutions
+2. Understand best practices
+3. Prototype key concepts
+4. Validate approach
+5. Implement fully
+"""
+
+test_driven = """For quality-critical features:
+1. Define test cases first
+2. Write failing tests
+3. Implement minimal solution
+4. Refactor for quality
+5. Expand coverage
+"""
+
+spike_and_stabilize = """For experimental features:
+1. Rapid prototype (spike)
+2. Learn from implementation
+3. Discard and rewrite properly
+4. Apply lessons learned
+5. Build production version
+"""
+
+[decision_making]
+trade_off_analysis = """Evaluate options by:
+- Implementation complexity
+- Maintenance burden
+- Performance impact
+- User experience
+- Future flexibility
+"""
+
+decision_documentation = """Record decisions with:
+- Context and constraints
+- Options considered
+- Rationale for choice
+- Expected outcomes
+- Review triggers
+"""
+
+[continuous_improvement]
+retrospective_practice = """After task completion:
+1. What went well?
+2. What could improve?
+3. What surprised us?
+4. What would we do differently?
+5. What should we share with others?
+"""
+
+process_refinement = """Improve planning by:
+- Tracking estimate accuracy
+- Identifying recurring issues
+- Streamlining workflows
+- Automating repetitive tasks
+- Building reusable components
+"""

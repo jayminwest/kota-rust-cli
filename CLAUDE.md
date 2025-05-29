@@ -46,6 +46,15 @@ When developing and modifying KOTA, adhere to these principles:
 #### 7. Integration and Resourcefulness
 - The tool should be able to interact with its environment to gather information and perform actions. This includes web search capabilities, interaction with other MCP servers (e.g., for specific services like Supabase or Stripe), and potentially assisting in live interactive sessions.
 
+#### 8. Rapid Adaptability
+- In the fast-paced AI ecosystem where models improve weekly and new tools emerge daily, KOTA must be able to adapt at the speed of innovation.
+- This is achieved through:
+  - **Self-modification**: Ability to update its own code to integrate new capabilities
+  - **Modular architecture**: Easy swapping of LLM providers (Gemini/Ollama) and addition of new ones
+  - **Configuration-driven behavior**: `prompts.toml` allows instant behavior changes without recompilation
+  - **Model agnostic design**: Support for multiple models with easy addition of new ones
+- The goal is to prevent KOTA from becoming obsolete as the AI landscape evolves, ensuring it can always leverage the latest advancements in language models, tools, and techniques.
+
 ### Evolutionary Trajectory
 
 The KOTA Rust CLI tool is not a static piece of software but an evolving entity. Its development path is envisioned as:
