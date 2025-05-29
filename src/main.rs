@@ -15,9 +15,10 @@ mod prompts;
 mod tui;
 mod dynamic_prompts;
 mod file_browser;
+mod memory;
 
 use context::ContextManager;
-use llm::LlmProvider;
+use llm::{LlmProvider, ModelConfig};
 
 fn render_markdown(content: &str) -> anyhow::Result<()> {
     // Create a markdown renderer with customized skin
@@ -100,29 +101,29 @@ async fn main() -> anyhow::Result<()> {
     }
     
     let context_manager = ContextManager::new();
-    let current_provider = LlmProvider::default();
+    let model_config = ModelConfig::default();
     
     // Launch appropriate interface
     if use_tui {
         // Launch modern TUI
-        tui::run_tui(context_manager, current_provider).await
+        tui::run_tui(context_manager, model_config).await
     } else {
         // Launch classic CLI
-        run_classic_cli(context_manager, current_provider).await
+        run_classic_cli(context_manager, model_config).await
     }
 }
 
-async fn run_classic_cli(_context_manager: ContextManager, _current_provider: LlmProvider) -> anyhow::Result<()> {
+async fn run_classic_cli(_context_manager: ContextManager, _model_config: ModelConfig) -> anyhow::Result<()> {
     let header_width = 60;
     println!("{}", "═".repeat(header_width).bright_blue());
     println!("{}", "KOTA - AI Coding Assistant".bright_white().bold());
     println!("{}", "═".repeat(header_width).bright_blue());
     
     let mut context_manager = ContextManager::new();
-    let mut current_provider = LlmProvider::default();
+    let mut model_config = ModelConfig::default();
     
     // Show provider status and check API key for Gemini
-    match current_provider {
+    match model_config.provider {
         LlmProvider::Ollama => println!("{} {}", "Provider:".dimmed(), "Ollama (local)".cyan()),
         LlmProvider::Gemini => {
             if std::env::var("GEMINI_API_KEY").is_ok() {
@@ -130,6 +131,15 @@ async fn run_classic_cli(_context_manager: ContextManager, _current_provider: Ll
             } else {
                 println!("{} {}", "Provider:".dimmed(), "Google Gemini (cloud) - Missing API key".yellow());
                 println!("{} export GEMINI_API_KEY=your_api_key", "Set with:".dimmed());
+                println!("{} Use /provider ollama to switch to local Ollama", "Alternative:".dimmed());
+            }
+        }
+        LlmProvider::Anthropic => {
+            if std::env::var("ANTHROPIC_API_KEY").is_ok() {
+                println!("{} {}", "Provider:".dimmed(), "Anthropic Claude (cloud)".cyan());
+            } else {
+                println!("{} {}", "Provider:".dimmed(), "Anthropic Claude (cloud) - Missing API key".yellow());
+                println!("{} export ANTHROPIC_API_KEY=your_api_key", "Set with:".dimmed());
                 println!("{} Use /provider ollama to switch to local Ollama", "Alternative:".dimmed());
             }
         }
@@ -400,8 +410,10 @@ async fn run_classic_cli(_context_manager: ContextManager, _current_provider: Ll
                     println!();
                     
                     println!("{}", "Configuration:".bright_yellow().bold());
-                    println!("  {} - Switch LLM provider", "/provider <ollama|gemini>".cyan());
+                    println!("  {} - Switch LLM provider", "/provider <ollama|gemini|anthropic>".cyan());
                     println!("  {} - Show current provider", "/provider".cyan());
+                    println!("  {} - Set model for current provider", "/model <model_name>".cyan());
+                    println!("  {} - Show current model", "/model".cyan());
                     println!();
                     
                     println!("{}", "General:".bright_yellow().bold());
@@ -424,35 +436,59 @@ async fn run_classic_cli(_context_manager: ContextManager, _current_provider: Ll
                 "/tui" => {
                     // Switch to TUI mode
                     println!("Switching to TUI mode...");
-                    return tui::run_tui(context_manager, current_provider).await;
+                    return tui::run_tui(context_manager, model_config).await;
                 }
                 "/provider" => {
                     if arg.is_empty() {
-                        match current_provider {
+                        match model_config.provider {
                             LlmProvider::Ollama => println!("Current provider: Ollama"),
                             LlmProvider::Gemini => println!("Current provider: Google Gemini"),
+                            LlmProvider::Anthropic => println!("Current provider: Anthropic Claude"),
                         }
-                        println!("Usage: /provider <ollama|gemini>");
+                        println!("Usage: /provider <ollama|gemini|anthropic>");
                     } else {
                         match arg.to_lowercase().as_str() {
                             "ollama" => {
-                                current_provider = LlmProvider::Ollama;
+                                model_config.provider = LlmProvider::Ollama;
                                 println!("{} {}", "Provider:".green(), "Ollama (local)".cyan());
                             }
                             "gemini" => {
                                 // Check if GEMINI_API_KEY is set
                                 if std::env::var("GEMINI_API_KEY").is_ok() {
-                                    current_provider = LlmProvider::Gemini;
+                                    model_config.provider = LlmProvider::Gemini;
                                     println!("{} {}", "Provider:".green(), "Google Gemini (cloud)".cyan());
                                 } else {
                                     println!("{} GEMINI_API_KEY environment variable", "Missing:".red());
                                     println!("{} export GEMINI_API_KEY=your_api_key", "Set with:".dimmed());
                                 }
                             }
+                            "anthropic" => {
+                                // Check if ANTHROPIC_API_KEY is set
+                                if std::env::var("ANTHROPIC_API_KEY").is_ok() {
+                                    model_config.provider = LlmProvider::Anthropic;
+                                    println!("{} {}", "Provider:".green(), "Anthropic Claude (cloud)".cyan());
+                                } else {
+                                    println!("{} ANTHROPIC_API_KEY environment variable", "Missing:".red());
+                                    println!("{} export ANTHROPIC_API_KEY=your_api_key", "Set with:".dimmed());
+                                }
+                            }
                             _ => {
-                                println!("Unknown provider: {}. Use 'ollama' or 'gemini'", arg);
+                                println!("Unknown provider: {}. Use 'ollama', 'gemini', or 'anthropic'", arg);
                             }
                         }
+                    }
+                }
+                "/model" => {
+                    if arg.is_empty() {
+                        println!("Current model: {}", model_config.display_name());
+                        println!("Usage: /model <model_name>");
+                        println!("Examples:");
+                        println!("  /model claude-3-5-sonnet-20241022");
+                        println!("  /model gemini-1.5-pro");
+                        println!("  /model llama2:13b");
+                    } else {
+                        model_config.model_name = Some(arg.to_string());
+                        println!("{} {}", "Model:".green(), model_config.display_name().cyan());
                     }
                 }
                 "/version" => {
@@ -470,7 +506,7 @@ async fn run_classic_cli(_context_manager: ContextManager, _current_provider: Ll
             // Show thinking indicator while waiting for LLM response
             let thinking = thinking::show_llm_thinking();
             
-            match llm::ask_model_with_provider(trimmed_input, &current_context, current_provider.clone()).await {
+            match llm::ask_model_with_config(trimmed_input, &current_context, &model_config).await {
                 Ok(response) => {
                     // Clear the thinking indicator
                     thinking.finish();

@@ -71,9 +71,9 @@ impl ContextManager {
             for file_path in &self.file_paths {
                 full_context.push_str(&format!("- {}\n", file_path));
             }
-            full_context.push_str("\nIMPORTANT: You can only suggest edits to files listed above. If you need to edit a file not in this list, tell the user to run: /add_file <filename>\n\n");
+            full_context.push_str("\nIMPORTANT: You can only suggest edits to files listed above. If you need to edit a file not in this list, tell the user to run: :add <filename>\n\n");
         } else {
-            full_context.push_str("No files in context. To edit files, the user must first add them with: /add_file <filename>\n\n");
+            full_context.push_str("No files in context. To edit files, the user must first add them with: :add <filename>\n\n");
         }
         
         // Add the actual context items

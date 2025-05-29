@@ -111,6 +111,28 @@ docs: update README
 
 Commit message:"""
 
+anthropic_prompt = """Generate a conventional commit message for the following changes.
+
+Original user request: {original_prompt}
+
+Git diff:
+{git_diff}
+
+Requirements:
+- Use conventional commit format (type: description)
+- Keep under 72 characters
+- Use present tense
+- Be specific and clear about what changed
+- Choose appropriate type: feat, fix, docs, style, refactor, test, chore
+
+Examples:
+- feat: add user authentication system
+- fix: resolve memory leak in parser
+- docs: update installation instructions
+- refactor: simplify database connection logic
+
+Return only the commit message, nothing else."""
+
 [search_replace]
 # Instructions and examples for search/replace blocks
 format_reminder = """Remember: Search/Replace blocks must use this exact format:

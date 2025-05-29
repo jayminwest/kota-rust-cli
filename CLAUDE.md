@@ -123,14 +123,24 @@ command2
 **Terminal User Interface** (`src/tui.rs`): Advanced TUI featuring:
 - **Multi-pane layout**: Chat history, terminal output, context view, and file browser
 - **Vim-style navigation**: Full hjkl navigation with arrow key alternatives
-- **Command execution**: Terminal pane displays suggested commands, execute with 'x' key
+- **Auto-scrolling chat**: Automatic scrolling with manual override and 'a' key toggle
+- **Enhanced command display**: Clear command suggestions with status indicators (⏸ ▶ ✓ ✗)
+- **Individual command execution**: Navigate commands with 'n'/'p', execute with 'x'
+- **Multi-line input support**: Smart detection of code blocks, brackets, and continuations
 - **Emoji-free design**: Clean text-based indicators ([D] directories, [L] symlinks)
 - **Markdown rendering**: Enhanced display of headers, code blocks, and formatting
-- **Real-time updates**: Live data display (time, git branch, file counts)
+- **Real-time updates**: Live data display (time, git branch, file counts, scroll mode)
 
 **File Browser** (`src/file_browser.rs`): Interactive file navigation with sudo support, permissions display, and context integration.
 
 **Dynamic Prompts** (`src/dynamic_prompts.rs`): Live system data injection including current time, working directory, git branch, and context information.
+
+**Memory Manager** (`src/memory.rs`): Persistent knowledge base system that automatically captures and organizes conversation context:
+- **Automatic storage**: Conversations saved with timestamps in structured knowledge-base/
+- **Domain organization**: Content organized by topic areas (personal, projects, systems, etc.)
+- **Privacy protection**: Local-only storage with .gitignore protection
+- **Smart retrieval**: Commands for memory access (:memory, :search, :learn)
+- **Conversation summarization**: Automatic context summarization and storage
 
 ### Application Flow
 
@@ -164,9 +174,11 @@ command2
 - **i** - Enter insert mode to type messages
 - **Esc** - Return to normal mode
 - **f** - Enter file browser mode
+- **a** - Toggle auto-scroll mode in chat (AUTO/MANUAL indicator in status)
 - **Tab** - Cycle through panes (Chat → Terminal → Context → File Browser)
 - **hjkl / ↑↓←→** - Navigate and scroll within panes
-- **x** - Execute suggested commands (when terminal pane focused)
+- **n/p** - Navigate through command suggestions (when terminal focused)
+- **x** - Execute selected command or all commands
 - **?** - Show help and keyboard shortcuts
 - **Ctrl+Q** - Quit application
 
@@ -184,6 +196,11 @@ command2
 - `/provider <ollama|gemini>` - Switch between LLM providers
 - `/help` - Show all available commands
 - `/quit` - Exit application
+
+#### Memory & Knowledge Base Commands
+- `:memory` - Show recent conversation summaries
+- `:search <query>` - Search knowledge base for specific topics
+- `:learn <topic>: <content>` - Add specific learning to knowledge base
 
 ### Keyboard Shortcuts
 
@@ -233,6 +250,12 @@ KOTA automatically detects when your input should continue on multiple lines and
 - **... ** - Continuation prompt (dimmed) on subsequent lines
 - **Enter** - Continues to next line when incomplete
 - **Ctrl+D** - Force completion of multiline input
+
+**Multi-line Input Area:**
+- **Visual feedback**: Input area expands to show all lines being composed
+- **Continuation prompts**: Clear `...` indicators for subsequent lines
+- **Smart completion**: Automatic detection when input is complete
+- **Force send**: Ctrl+D to send incomplete multi-line input
 
 **Examples:**
 ```
@@ -285,12 +308,44 @@ When implementing self-modification features:
 4. **Careful Changes**: Self-modifications should maintain working functionality - test changes thoroughly
 5. **Meaningful Commits**: Auto-commits for self-modifications should clearly describe the enhancement
 
+### Multi-Agent Architecture Foundation
+
+KOTA is designed with infrastructure ready for advanced multi-agent capabilities:
+
+**Command System**: Structured command parsing and execution framework that can be extended for agent tool delegation
+
+**Context Management**: Enhanced context system supporting multi-agent coordination and shared state
+
+**Message Passing**: Infrastructure for agent-to-agent communication and task delegation
+
+**ModelConfig System**: Supports multiple concurrent LLM connections for different agent roles
+
+**Extensible Design**: Modular architecture ready for specialized agent implementations (coding, research, planning, etc.)
+
+### Knowledge Base & Memory
+
+KOTA automatically builds and maintains a persistent knowledge base:
+
+**Automatic Capture**: All conversations are automatically summarized and stored with timestamps
+
+**Domain Organization**: Knowledge organized by subject areas following KOTA principles:
+- `personal/` - Identity, career, finance, journaling
+- `projects/` - Active and historical project documentation  
+- `systems/` - Tools, workflows, and technical knowledge
+- `core/` - Conversation management, partnerships, MCP integration
+
+**Privacy Protection**: Local-only storage with .gitignore ensuring personal content stays private
+
+**Smart Retrieval**: Natural language commands for accessing stored knowledge
+
+**Context Integration**: Memory automatically informs current conversations with relevant past context
+
 ### Quality Standards
 
 KOTA maintains the highest code quality standards with comprehensive testing and linting:
 
 - **Zero Clippy Warnings**: Passes `cargo clippy -- -D warnings` with no issues
-- **Comprehensive Testing**: 45+ tests covering all core functionality
+- **Comprehensive Testing**: 52+ tests covering all core functionality including new features
 - **Dead Code Elimination**: No unused code, methods, or dependencies
 - **Memory Safety**: Safe async patterns with proper mutex handling
 - **Error Handling**: Robust error handling with `anyhow` throughout

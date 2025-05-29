@@ -13,8 +13,38 @@ use tokio::time::timeout;
 #[derive(Default)]
 pub enum LlmProvider {
     Ollama,
-    #[default]
     Gemini,
+    #[default]
+    Anthropic,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ModelConfig {
+    pub provider: LlmProvider,
+    pub model_name: Option<String>,
+}
+
+impl ModelConfig {
+
+    pub fn get_model_name(&self) -> String {
+        match &self.model_name {
+            Some(name) => name.clone(),
+            None => match self.provider {
+                LlmProvider::Ollama => DEFAULT_OLLAMA_MODEL.to_string(),
+                LlmProvider::Gemini => DEFAULT_GEMINI_MODEL.to_string(),
+                LlmProvider::Anthropic => DEFAULT_ANTHROPIC_MODEL.to_string(),
+            }
+        }
+    }
+
+    pub fn display_name(&self) -> String {
+        let model = self.get_model_name();
+        match self.provider {
+            LlmProvider::Ollama => format!("Ollama/{}", model),
+            LlmProvider::Gemini => format!("Gemini/{}", model),
+            LlmProvider::Anthropic => format!("Claude/{}", model),
+        }
+    }
 }
 
 
@@ -23,6 +53,25 @@ pub enum LlmProvider {
 struct OllamaChatMessage {
     role: String,
     content: String,
+}
+
+// Structs for Anthropic's messages API
+#[derive(Serialize)]
+struct AnthropicMessage {
+    role: String,
+    content: String,
+}
+
+#[derive(Deserialize)]
+struct AnthropicResponse {
+    content: Vec<AnthropicContent>,
+}
+
+#[derive(Deserialize)]
+struct AnthropicContent {
+    text: String,
+    #[serde(rename = "type")]
+    content_type: String,
 }
 
 #[derive(Serialize)]
@@ -47,26 +96,34 @@ const OLLAMA_API_URL: &str = "http://localhost:11434/api/chat";
 const DEFAULT_OLLAMA_MODEL: &str = "qwen3:8b";
 const DEFAULT_GEMINI_MODEL: &str = "gemini-2.5-pro-preview-05-06";
 const GEMINI_COMMIT_MODEL: &str = "gemini-2.5-flash-preview-05-20";
+const DEFAULT_ANTHROPIC_MODEL: &str = "claude-sonnet-4-20250514";
+const ANTHROPIC_API_URL: &str = "https://api.anthropic.com/v1/messages";
 
 // Timeout configuration
 // Ollama: 120 seconds for main requests, 60 seconds for commits
 // Gemini: 360 seconds for main requests (3x Ollama), 180 seconds for commits
+// Anthropic: 240 seconds for main requests (2x Ollama), 120 seconds for commits
 const GEMINI_TIMEOUT_SECS: u64 = 360;
+const ANTHROPIC_TIMEOUT_SECS: u64 = 240;
 
 
-pub async fn ask_model_with_provider(user_prompt: &str, context_str: &str, provider: LlmProvider) -> anyhow::Result<String> {
+
+pub async fn ask_model_with_config(user_prompt: &str, context_str: &str, config: &ModelConfig) -> anyhow::Result<String> {
     let prompts_config = PromptsConfig::load().unwrap_or_default();
-    match provider {
-        LlmProvider::Ollama => ask_ollama_model(user_prompt, context_str, &prompts_config).await,
-        LlmProvider::Gemini => ask_gemini_model(user_prompt, context_str, &prompts_config).await,
+    let model_name = config.get_model_name();
+    
+    match config.provider {
+        LlmProvider::Ollama => ask_ollama_model(user_prompt, context_str, &prompts_config, &model_name).await,
+        LlmProvider::Gemini => ask_gemini_model(user_prompt, context_str, &prompts_config, &model_name).await,
+        LlmProvider::Anthropic => ask_anthropic_model(user_prompt, context_str, &prompts_config, &model_name).await,
     }
 }
 
-async fn ask_gemini_model(user_prompt: &str, context_str: &str, prompts_config: &PromptsConfig) -> anyhow::Result<String> {
+async fn ask_gemini_model(user_prompt: &str, context_str: &str, prompts_config: &PromptsConfig, model_name: &str) -> anyhow::Result<String> {
     let api_key = std::env::var("GEMINI_API_KEY")
         .map_err(|_| anyhow::anyhow!("GEMINI_API_KEY environment variable not found. Please set it to use Gemini."))?;
     
-    let ai = Gemini::new(api_key, DEFAULT_GEMINI_MODEL, None);
+    let ai = Gemini::new(api_key, model_name, None);
     let mut session = Session::new(10); // Keep last 10 messages for context
     
     // Prepare the full prompt with system instructions and context
@@ -89,7 +146,94 @@ async fn ask_gemini_model(user_prompt: &str, context_str: &str, prompts_config: 
     Ok(response.get_text(""))
 }
 
-async fn ask_ollama_model(user_prompt: &str, context_str: &str, prompts_config: &PromptsConfig) -> anyhow::Result<String> {
+async fn ask_anthropic_model(user_prompt: &str, context_str: &str, prompts_config: &PromptsConfig, model_name: &str) -> anyhow::Result<String> {
+    let api_key = std::env::var("ANTHROPIC_API_KEY")
+        .map_err(|_| anyhow::anyhow!("ANTHROPIC_API_KEY environment variable not found. Please set it to use Anthropic Claude."))?;
+    
+    // Create a client with timeout settings
+    let client = ClientBuilder::new()
+        .timeout(Duration::from_secs(ANTHROPIC_TIMEOUT_SECS))
+        .connect_timeout(Duration::from_secs(10))
+        .build()
+        .context("Failed to create HTTP client")?;
+    
+    let mut messages = Vec::new();
+    
+    // Add system message with instructions and context
+    let system_instructions = prompts_config.get_system_instructions();
+    let system_content = if context_str.is_empty() {
+        system_instructions.to_string()
+    } else {
+        format!("{}\n\n{}", system_instructions, context_str)
+    };
+    
+    // For Anthropic, we need to structure messages differently
+    // The system prompt goes in the system parameter of the API call
+    messages.push(AnthropicMessage {
+        role: "user".to_string(),
+        content: user_prompt.to_string(),
+    });
+    
+    // Note: We're using serde_json::json! here because Anthropic API requires
+    // the "system" field which is not part of our AnthropicRequest struct
+    let request_payload = serde_json::json!({
+        "model": model_name,
+        "messages": messages,
+        "max_tokens": 4096,
+        "system": system_content,
+    });
+    
+    let response = client
+        .post(ANTHROPIC_API_URL)
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&request_payload)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_connect() {
+                anyhow::anyhow!("Failed to connect to Anthropic API. Please check your internet connection.")
+            } else if e.is_timeout() {
+                anyhow::anyhow!("Request to Anthropic API timed out after {} seconds", ANTHROPIC_TIMEOUT_SECS)
+            } else {
+                anyhow::anyhow!("Failed to send request to Anthropic API: {}", e)
+            }
+        })?;
+    
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        
+        let error_msg = match status.as_u16() {
+            401 => format!("Authentication failed. Please check your ANTHROPIC_API_KEY. Status {}: {}", status, error_text),
+            403 => format!("Access forbidden. Your API key may not have access to this model. Status {}: {}", status, error_text),
+            404 => format!("Model not found. Status {}: {}", status, error_text),
+            429 => format!("Rate limit exceeded. Please wait before trying again. Status {}: {}", status, error_text),
+            500 => format!("Anthropic server error. Status {}: {}", status, error_text),
+            _ => format!("Anthropic API request failed with status {}: {}", status, error_text),
+        };
+        
+        return Err(anyhow::anyhow!(error_msg));
+    }
+    
+    let anthropic_response: AnthropicResponse = response
+        .json()
+        .await
+        .context("Failed to parse JSON response from Anthropic API")?;
+    
+    // Extract text from the first content block
+    let text = anthropic_response
+        .content
+        .into_iter()
+        .find(|c| c.content_type == "text")
+        .map(|c| c.text)
+        .unwrap_or_else(|| "No text response from Anthropic".to_string());
+    
+    Ok(text)
+}
+
+async fn ask_ollama_model(user_prompt: &str, context_str: &str, prompts_config: &PromptsConfig, model_name: &str) -> anyhow::Result<String> {
     // Create a client with timeout settings
     let client = ClientBuilder::new()
         .timeout(Duration::from_secs(120))  // 2 minute timeout for the entire request
@@ -122,7 +266,7 @@ async fn ask_ollama_model(user_prompt: &str, context_str: &str, prompts_config: 
     });
 
     let request_payload = OllamaChatRequest {
-        model: DEFAULT_OLLAMA_MODEL.to_string(),
+        model: model_name.to_string(),
         messages,
         stream: false,
     };
@@ -170,7 +314,17 @@ async fn ask_ollama_model(user_prompt: &str, context_str: &str, prompts_config: 
 pub async fn generate_commit_message(original_prompt: &str, git_diff: &str) -> anyhow::Result<String> {
     let prompts_config = PromptsConfig::load().unwrap_or_default();
     
-    // Try Gemini first, fallback to Ollama if API key not available
+    // Try Anthropic first if API key is available
+    if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
+        match generate_commit_message_anthropic(original_prompt, git_diff, &api_key, &prompts_config).await {
+            Ok(message) => return Ok(message),
+            Err(e) => {
+                eprintln!("Warning: Anthropic commit generation failed: {}. Trying other providers...", e);
+            }
+        }
+    }
+    
+    // Try Gemini next, fallback to Ollama if API key not available
     if let Ok(api_key) = std::env::var("GEMINI_API_KEY") {
         match generate_commit_message_gemini(original_prompt, git_diff, &api_key, &prompts_config).await {
             Ok(message) => return Ok(message),
@@ -201,6 +355,64 @@ async fn generate_commit_message_gemini(original_prompt: &str, git_diff: &str, a
     
     // Clean up the response (remove any extra whitespace/newlines)
     let commit_message = response.get_text("").trim().to_string();
+    
+    Ok(commit_message)
+}
+
+async fn generate_commit_message_anthropic(original_prompt: &str, git_diff: &str, api_key: &str, prompts_config: &PromptsConfig) -> anyhow::Result<String> {
+    let client = ClientBuilder::new()
+        .timeout(Duration::from_secs(ANTHROPIC_TIMEOUT_SECS / 2))  // Half timeout for commit messages
+        .connect_timeout(Duration::from_secs(10))
+        .build()
+        .context("Failed to create HTTP client")?;
+    
+    let prompt = prompts_config.get_anthropic_commit_prompt(original_prompt, git_diff);
+    
+    let messages = vec![
+        AnthropicMessage {
+            role: "user".to_string(),
+            content: prompt,
+        },
+    ];
+    
+    let request_payload = serde_json::json!({
+        "model": DEFAULT_ANTHROPIC_MODEL,
+        "messages": messages,
+        "max_tokens": 1024,
+    });
+    
+    let response = client
+        .post(ANTHROPIC_API_URL)
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&request_payload)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                anyhow::anyhow!("Anthropic commit generation timed out after {} seconds", ANTHROPIC_TIMEOUT_SECS / 2)
+            } else {
+                anyhow::anyhow!("Failed to generate commit message via Anthropic: {}", e)
+            }
+        })?;
+    
+    if !response.status().is_success() {
+        return Err(anyhow::anyhow!("Failed to generate commit message: HTTP {}", response.status()));
+    }
+    
+    let anthropic_response: AnthropicResponse = response
+        .json()
+        .await
+        .context("Failed to parse commit message response from Anthropic")?;
+    
+    // Extract text from the first content block
+    let commit_message = anthropic_response
+        .content
+        .into_iter()
+        .find(|c| c.content_type == "text")
+        .map(|c| c.text.trim().to_string())
+        .unwrap_or_else(|| "No commit message generated".to_string());
     
     Ok(commit_message)
 }

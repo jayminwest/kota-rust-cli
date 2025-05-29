@@ -11,6 +11,7 @@ pub struct SystemConfig {
 pub struct CommitGenerationConfig {
     pub gemini_prompt: String,
     pub ollama_prompt: String,
+    pub anthropic_prompt: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -64,6 +65,12 @@ impl PromptsConfig {
     
     pub fn get_ollama_commit_prompt(&self, original_prompt: &str, git_diff: &str) -> String {
         self.commit_generation.ollama_prompt
+            .replace("{original_prompt}", original_prompt)
+            .replace("{git_diff}", git_diff)
+    }
+    
+    pub fn get_anthropic_commit_prompt(&self, original_prompt: &str, git_diff: &str) -> String {
+        self.commit_generation.anthropic_prompt
             .replace("{original_prompt}", original_prompt)
             .replace("{git_diff}", git_diff)
     }
@@ -161,6 +168,27 @@ fix: memory leak in parser
 docs: update README
 
 Commit message:"#.to_string(),
+                anthropic_prompt: r#"Generate a conventional commit message for the following changes.
+
+Original user request: {original_prompt}
+
+Git diff:
+{git_diff}
+
+Requirements:
+- Use conventional commit format (type: description)
+- Keep under 72 characters
+- Use present tense
+- Be specific and clear about what changed
+- Choose appropriate type: feat, fix, docs, style, refactor, test, chore
+
+Examples:
+- feat: add user authentication system
+- fix: resolve memory leak in parser
+- docs: update installation instructions
+- refactor: simplify database connection logic
+
+Return only the commit message, nothing else."#.to_string(),
             },
             search_replace: SearchReplaceConfig {
                 format_reminder: r#"Remember: Search/Replace blocks must use this exact format:

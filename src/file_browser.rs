@@ -267,6 +267,12 @@ impl FileBrowser {
     pub fn move_down(&mut self) {
         if self.selected_index < self.items.len().saturating_sub(1) {
             self.selected_index += 1;
+            // Update scroll offset if selected item goes below visible area
+            // Assume visible area is about 20 items (this could be made dynamic)
+            let visible_items = 20;
+            if self.selected_index >= self.scroll_offset + visible_items {
+                self.scroll_offset = self.selected_index.saturating_sub(visible_items - 1);
+            }
         }
     }
     

@@ -35,25 +35,32 @@ KOTA represents an exploration of distributed cognition – where human and AI c
 
 ### 🖥️ Advanced Terminal User Interface (TUI)
 - **Multi-pane layout**: Chat history, terminal output, context view, and file browser
+- **Auto-scrolling chat**: Smart auto-scroll with manual override (toggle with 'a' key)
+- **Enhanced command display**: Clear command suggestions with status indicators (⏸ ▶ ✓ ✗)
+- **Individual command execution**: Navigate commands with 'n'/'p', execute selected with 'x'
+- **Multi-line input support**: Smart detection of code blocks, brackets, and line continuations
 - **Vim-style navigation**: Full hjkl navigation with arrow key alternatives
-- **Command execution**: Terminal pane displays suggested commands, execute with 'x' key
 - **Interactive file browser**: Navigate directories, add files to context
-- **Real-time updates**: Live display of time, git branch, file counts
+- **Real-time updates**: Live display of time, git branch, file counts, scroll mode
 - **Emoji-free design**: Clean text-based indicators for compatibility
 
 ### 🤖 AI-Powered Development
 - **AI-Powered Code Editing**: Uses Search/Replace blocks to suggest and apply precise code changes
-- **Command Suggestions**: LLMs suggest shell commands displayed in terminal pane for execution
+- **Enhanced Command System**: LLMs suggest commands with clear status tracking and individual execution
 - **Context Management**: Maintain conversation context by adding files and code snippets
+- **Knowledge Base Integration**: Automatic conversation storage and retrieval system
 - **Auto-Commit**: Automatically creates git commits with AI-generated commit messages
 - **Multiple LLM Providers**: Works with both Google Gemini (cloud, default) and Ollama (local)
+- **Multi-Agent Ready**: Infrastructure for advanced multi-agent coordination and task delegation
 
 ### 🔧 Developer Experience
+- **Advanced Input Handling**: Multi-line input with smart detection and visual feedback
 - **Vim Bindings**: Full vim-style editing and navigation throughout the interface
 - **Markdown Rendering**: Enhanced display of headers, code blocks, and formatting
 - **File Safety**: Strict access control - can only edit files explicitly added to context
 - **Checkbox Feedback**: Clear visual indicators for context operations (`Context: [x] filename`)
-- **Zero Warnings**: Passes strictest Rust linting with 45+ comprehensive tests
+- **Persistent Memory**: Automatic knowledge base with conversation history and learning
+- **Zero Warnings**: Passes strictest Rust linting with 52+ comprehensive tests
 
 ## Prerequisites
 
@@ -94,9 +101,11 @@ The TUI provides an interactive multi-pane interface:
 - **i** - Enter insert mode to type messages
 - **Esc** - Return to normal mode
 - **f** - Enter file browser mode
+- **a** - Toggle auto-scroll mode in chat (AUTO/MANUAL indicator)
 - **Tab** - Cycle through panes (Chat → Terminal → Context → File Browser)
 - **hjkl / ↑↓←→** - Navigate and scroll within panes
-- **x** - Execute suggested commands (when terminal pane focused)
+- **n/p** - Navigate through command suggestions (when terminal focused)
+- **x** - Execute selected command or all commands
 - **?** - Show help and keyboard shortcuts
 - **Ctrl+Q** - Quit application
 
@@ -121,6 +130,11 @@ The TUI provides an interactive multi-pane interface:
 - `/provider <ollama|gemini>` - Switch between LLM providers
 - `/help` - Show all available commands
 - `/quit` - Exit application
+
+#### Memory & Knowledge Base Commands
+- `:memory` - Show recent conversation summaries
+- `:search <query>` - Search knowledge base for specific topics
+- `:learn <topic>: <content>` - Add specific learning to knowledge base
 
 ### AI Interactions
 
@@ -205,20 +219,56 @@ You: Add a new command /version that shows the current version of KOTA
 ## Architecture
 
 ### Core Components
-- **Terminal User Interface**: Advanced multi-pane TUI with vim navigation
-- **LLM Integration**: Supports Google Gemini (cloud) and Ollama (local)
+- **Terminal User Interface**: Advanced multi-pane TUI with auto-scroll, enhanced commands, and multi-line input
+- **LLM Integration**: Supports Google Gemini (cloud) and Ollama (local) with multi-agent infrastructure
 - **Search/Replace Parser**: Parses structured file edit suggestions
-- **Command Parser**: Parses and executes shell commands with confirmation
+- **Enhanced Command System**: Individual command execution with status tracking and navigation
 - **File Editor**: Handles interactive file modifications with safety checks
 - **Context Manager**: Maintains conversation context with strict access control
+- **Memory Manager**: Persistent knowledge base with automatic conversation storage
 - **File Browser**: Interactive navigation with sudo support
+- **Multi-line Input Handler**: Smart detection of code blocks, brackets, and continuations
 
 ### Quality Standards
 - **Zero Clippy Warnings**: Passes `cargo clippy -- -D warnings` with no issues
-- **Comprehensive Testing**: 45+ tests covering all core functionality
+- **Comprehensive Testing**: 52+ tests covering all core functionality including new features
 - **Dead Code Elimination**: No unused code, methods, or dependencies
 - **Memory Safety**: Safe async patterns with proper mutex handling
 - **Error Handling**: Robust error handling with `anyhow` throughout
+
+### Knowledge Base & Memory System
+
+KOTA automatically maintains a persistent knowledge base that enhances every interaction:
+
+#### Automatic Features
+- **Conversation Storage**: All chats automatically summarized and stored with timestamps
+- **Domain Organization**: Knowledge organized by subject areas (personal, projects, systems, core)
+- **Privacy Protection**: Local-only storage with .gitignore ensuring personal content stays private
+- **Context Integration**: Past knowledge automatically informs current conversations
+
+#### Manual Commands
+- `:memory` - View recent conversation summaries and learning
+- `:search <query>` - Search across stored knowledge for specific topics
+- `:learn <topic>: <content>` - Add specific insights or information to the knowledge base
+
+#### Knowledge Structure
+```
+knowledge-base/
+├── personal/          # Identity, career, finance, journaling
+├── projects/          # Active and historical projects
+├── systems/           # Tools, workflows, technical knowledge
+└── core/             # Conversation management, partnerships
+```
+
+### Multi-Agent Architecture
+
+KOTA is designed with infrastructure ready for advanced multi-agent capabilities:
+
+- **Command Delegation**: Structured system for distributing tasks to specialized agents
+- **Shared Context**: Enhanced context management supporting multi-agent coordination
+- **Message Passing**: Infrastructure for agent-to-agent communication
+- **Concurrent LLM Support**: ModelConfig system supports multiple simultaneous connections
+- **Extensible Design**: Modular architecture ready for coding, research, planning, and other specialized agents
 
 ## Development
 
@@ -226,13 +276,13 @@ You: Add a new command /version that shows the current version of KOTA
 # Build
 cargo build
 
-# Run tests
+# Run tests (52+ comprehensive tests)
 cargo test
 
 # Format code
 cargo fmt
 
-# Lint code (strict mode)
+# Lint code (strict mode - zero warnings)
 cargo clippy -- -D warnings
 ```
 
