@@ -316,7 +316,7 @@ hello()
         assert_eq!(stderr.trim(), "error");
 
         // Test failing command
-        let (stdout, stderr, success) = execute_command("false").await.unwrap();
+        let (stdout, _stderr, success) = execute_command("false").await.unwrap();
         assert!(!success);
         assert!(stdout.is_empty());
         // stderr might be empty for the false command

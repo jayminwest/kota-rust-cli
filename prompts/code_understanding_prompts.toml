@@ -1,0 +1,173 @@
+# Code Understanding Prompts for KOTA
+# Prompts for analyzing, explaining, and understanding code
+
+[analysis_modes]
+overview = """When asked to analyze a codebase:
+1. Start with high-level architecture and structure
+2. Identify key components and their relationships
+3. Note design patterns and architectural decisions
+4. Highlight important dependencies
+5. Summarize the project's purpose and functionality
+"""
+
+deep_dive = """For detailed code analysis:
+1. Examine specific modules or functions in detail
+2. Trace data flow and control flow
+3. Identify potential issues or improvements
+4. Explain complex algorithms or logic
+5. Document implicit assumptions
+"""
+
+[explanation_styles]
+beginner_friendly = """When explaining code to beginners:
+- Use simple, clear language
+- Avoid jargon or explain it when necessary
+- Provide analogies and real-world examples
+- Break down complex concepts into steps
+- Include visual representations when helpful
+"""
+
+technical_expert = """When explaining to experienced developers:
+- Use precise technical terminology
+- Focus on design decisions and trade-offs
+- Discuss performance implications
+- Reference relevant patterns and principles
+- Compare with alternative approaches
+"""
+
+[code_review]
+review_checklist = """When reviewing code, examine:
+1. **Correctness**: Does it do what it's supposed to?
+2. **Clarity**: Is the code easy to understand?
+3. **Efficiency**: Are there performance concerns?
+4. **Maintainability**: Will this be easy to modify?
+5. **Security**: Are there any vulnerabilities?
+6. **Style**: Does it follow conventions?
+"""
+
+constructive_feedback = """Provide feedback that is:
+- Specific and actionable
+- Focused on the code, not the person
+- Balanced (note positives too)
+- Prioritized by importance
+- Accompanied by examples or suggestions
+"""
+
+[pattern_recognition]
+common_patterns = """Identify and explain:
+- Design patterns (Factory, Observer, Strategy, etc.)
+- Architectural patterns (MVC, MVVM, Clean Architecture)
+- Anti-patterns and code smells
+- Language-specific idioms
+- Framework conventions
+"""
+
+refactoring_opportunities = """Look for chances to:
+- Extract common functionality
+- Reduce code duplication
+- Improve naming clarity
+- Simplify complex logic
+- Enhance testability
+"""
+
+[dependency_analysis]
+dependency_mapping = """When analyzing dependencies:
+1. Map direct and transitive dependencies
+2. Identify circular dependencies
+3. Note version constraints and conflicts
+4. Highlight security vulnerabilities
+5. Suggest updates or alternatives
+"""
+
+impact_assessment = """Evaluate dependency changes by:
+- Checking breaking changes
+- Reviewing security advisories
+- Testing compatibility
+- Measuring performance impact
+- Considering maintenance burden
+"""
+
+[documentation_generation]
+code_documentation = """Generate documentation that includes:
+- Purpose and overview
+- Parameters and return values
+- Usage examples
+- Edge cases and limitations
+- Related functions or modules
+"""
+
+api_documentation = """For API documentation:
+- Endpoint descriptions
+- Request/response formats
+- Authentication requirements
+- Error handling
+- Rate limits and constraints
+"""
+
+[debugging_assistance]
+error_analysis = """When helping debug issues:
+1. Parse error messages for key information
+2. Identify the root cause, not just symptoms
+3. Suggest specific fixes with code examples
+4. Explain why the error occurred
+5. Recommend prevention strategies
+"""
+
+debugging_strategies = """Guide debugging with:
+- Systematic approach to isolate issues
+- Effective use of debugging tools
+- Strategic placement of log statements
+- Test case development
+- Performance profiling techniques
+"""
+
+[performance_analysis]
+bottleneck_identification = """Analyze performance by:
+- Identifying algorithmic complexity
+- Finding resource-intensive operations
+- Detecting memory leaks or inefficiencies
+- Analyzing database query patterns
+- Reviewing network request optimization
+"""
+
+optimization_suggestions = """Propose improvements through:
+- Algorithm optimization
+- Caching strategies
+- Parallel processing opportunities
+- Resource pooling
+- Lazy loading techniques
+"""
+
+[security_review]
+vulnerability_scanning = """Check for common security issues:
+- Input validation gaps
+- Authentication/authorization flaws
+- Injection vulnerabilities
+- Sensitive data exposure
+- Insecure dependencies
+"""
+
+security_recommendations = """Suggest security improvements:
+- Input sanitization methods
+- Secure coding practices
+- Encryption requirements
+- Access control patterns
+- Security testing approaches
+"""
+
+[learning_extraction]
+concept_identification = """Extract learning opportunities:
+- New programming techniques
+- Clever problem solutions
+- Best practice examples
+- Performance optimizations
+- Error handling patterns
+"""
+
+knowledge_synthesis = """Synthesize insights by:
+- Connecting related concepts
+- Building mental models
+- Creating reusable patterns
+- Documenting lessons learned
+- Preparing teaching materials
+"""

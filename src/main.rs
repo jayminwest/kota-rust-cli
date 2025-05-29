@@ -1,7 +1,8 @@
 use std::io::{self, Write};
 use std::process::Command;
+use std::env;
 use colored::*;
-use termimad::*;
+use termimad::MadSkin;
 
 mod llm;
 mod context;
@@ -11,6 +12,9 @@ mod cmd_parser;
 mod input;
 mod thinking;
 mod prompts;
+mod tui;
+mod dynamic_prompts;
+mod file_browser;
 
 use context::ContextManager;
 use llm::LlmProvider;
@@ -19,8 +23,17 @@ fn render_markdown(content: &str) -> anyhow::Result<()> {
     // Create a markdown renderer with customized skin
     let mut skin = MadSkin::default();
     
+    // Set consistent spacing and wrapping
+    skin.paragraph.align = termimad::Alignment::Left;
+    
     // Import the correct Color type from crossterm
     use termimad::crossterm::style::Color;
+    use termimad::crossterm::terminal;
+    
+    // Get terminal dimensions
+    let (width, _height) = terminal::size().unwrap_or((80, 24));
+    // Ensure minimum width for proper rendering and add padding
+    let width = width.saturating_sub(4).max(40); // Subtract 4 for terminal padding
     
     // Customize colors to match the existing UI theme using termimad's color functions
     skin.bold.set_fg(Color::White);
@@ -38,14 +51,22 @@ fn render_markdown(content: &str) -> anyhow::Result<()> {
     skin.inline_code.set_bg(Color::AnsiValue(237)); // Slightly lighter dark gray
     skin.inline_code.set_fg(Color::AnsiValue(252)); // Light gray text
     
-    // Style lists
+    // Style lists with better spacing
     skin.bullet.set_fg(Color::Cyan);
+    skin.paragraph.align = termimad::Alignment::Left;
+    
     
     // Style quotes
     skin.quote_mark.set_fg(Color::AnsiValue(244)); // Dimmed gray
     
-    // Print the markdown content with proper formatting
-    println!("{}", skin.term_text(content));
+    // Ensure consistent paragraph formatting with no extra margins
+    skin.paragraph.left_margin = 0;
+    skin.paragraph.right_margin = 0;
+    
+    // Print the markdown content with proper formatting using dynamic width
+    // The text method properly handles width constraints
+    let formatted = skin.text(content, Some(width as usize));
+    print!("{}", formatted);
     
     Ok(())
 }
@@ -53,9 +74,49 @@ fn render_markdown(content: &str) -> anyhow::Result<()> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("{}", "═".repeat(60).bright_blue());
+    // Parse command line arguments
+    let args: Vec<String> = env::args().collect();
+    let use_tui = args.contains(&"--tui".to_string()) || args.contains(&"-t".to_string());
+    
+    // Show help if requested
+    if args.contains(&"--help".to_string()) || args.contains(&"-h".to_string()) {
+        println!("KOTA - AI Coding Assistant");
+        println!();
+        println!("Usage: {} [OPTIONS]", args[0]);
+        println!();
+        println!("Options:");
+        println!("  -t, --tui       Launch with modern TUI interface");
+        println!("  -h, --help      Show this help message");
+        println!("  -v, --version   Show version information");
+        println!();
+        println!("Default: Launch in classic CLI mode");
+        return Ok(());
+    }
+    
+    // Show version if requested
+    if args.contains(&"--version".to_string()) || args.contains(&"-v".to_string()) {
+        println!("KOTA version: {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+    
+    let context_manager = ContextManager::new();
+    let current_provider = LlmProvider::default();
+    
+    // Launch appropriate interface
+    if use_tui {
+        // Launch modern TUI
+        tui::run_tui(context_manager, current_provider).await
+    } else {
+        // Launch classic CLI
+        run_classic_cli(context_manager, current_provider).await
+    }
+}
+
+async fn run_classic_cli(_context_manager: ContextManager, _current_provider: LlmProvider) -> anyhow::Result<()> {
+    let header_width = 60;
+    println!("{}", "═".repeat(header_width).bright_blue());
     println!("{}", "KOTA - AI Coding Assistant".bright_white().bold());
-    println!("{}", "═".repeat(60).bright_blue());
+    println!("{}", "═".repeat(header_width).bright_blue());
     
     let mut context_manager = ContextManager::new();
     let mut current_provider = LlmProvider::default();
@@ -345,6 +406,7 @@ async fn main() -> anyhow::Result<()> {
                     
                     println!("{}", "General:".bright_yellow().bold());
                     println!("  {} - Show this help message", "/help".cyan());
+                    println!("  {} - Show KOTA version", "/version".cyan());
                     println!("  {} - Exit KOTA", "/quit".cyan());
                     println!();
                     
@@ -352,6 +414,17 @@ async fn main() -> anyhow::Result<()> {
                     println!("  {} - Ask AI to edit files or execute commands", "Type any message".cyan());
                     println!("  {} - AI can suggest file edits and shell commands", "".dimmed());
                     println!();
+                    
+                    println!("{}", "Important: File Access Control".bright_red().bold());
+                    println!("  {} - Files must be added to context before editing", "⚠️ ".yellow());
+                    println!("  {} - Use /add_file before asking AI to edit", "".dimmed());
+                    println!("  {} - Edits to files not in context will be blocked", "".dimmed());
+                    println!();
+                }
+                "/tui" => {
+                    // Switch to TUI mode
+                    println!("Switching to TUI mode...");
+                    return tui::run_tui(context_manager, current_provider).await;
                 }
                 "/provider" => {
                     if arg.is_empty() {
@@ -381,6 +454,10 @@ async fn main() -> anyhow::Result<()> {
                             }
                         }
                     }
+                }
+                "/version" => {
+                    // Retrieve version from Cargo.toml at compile time
+                    println!("KOTA version: {}", env!("CARGO_PKG_VERSION"));
                 }
                 _ => {
                     println!("Unknown command: {}", command);
