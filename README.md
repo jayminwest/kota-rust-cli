@@ -323,6 +323,18 @@ Customize KOTA's behavior by editing `prompts.toml`:
 5. Ensure `cargo clippy -- -D warnings` passes
 6. Submit a pull request
 
+## TODO
+
+### Live Data Integration with MCP
+- [ ] Implement custom MCP servers for live data ingestion
+  - [ ] WebSocket MCP Server for real-time streams
+  - [ ] Kafka MCP Bridge for event streaming
+  - [ ] RSS/News MCP Server for content feeds
+  - [ ] Database Change Stream MCP for data sync
+- [ ] Create MCP server framework for rapid adapter development
+- [ ] Document MCP server creation patterns and best practices
+- [ ] Build example implementations for common data sources
+
 ## License
 
 This project is open source. See LICENSE file for details.
