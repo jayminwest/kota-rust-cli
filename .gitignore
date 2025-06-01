@@ -1,2 +1,8 @@
 /target
 .env
+
+# Personal knowledge base and private data
+knowledge-base/
+
+# Configuration files that may contain sensitive data
+.kota/

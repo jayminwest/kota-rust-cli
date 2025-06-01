@@ -1,5 +1,0 @@
-# Ignore all contents of the knowledge-base directory for privacy
-# but track the structure by keeping this .gitignore file
-*
-!.gitignore
-!README.md
