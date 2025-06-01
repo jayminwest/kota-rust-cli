@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// User approval system for command execution with risk assessment
 
 use std::io::{self, Write};
 use std::str::FromStr;

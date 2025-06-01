@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// macOS Seatbelt sandboxing for secure command execution
 
 use std::process::{Command, Stdio};
 use std::path::PathBuf;

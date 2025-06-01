@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// PlanningAgent: Specialized for task planning and strategic thinking
 
 use anyhow::Result;
 use async_trait::async_trait;

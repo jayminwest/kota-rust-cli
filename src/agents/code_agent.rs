@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// CodeAgent: Specialized for code generation, analysis, and refactoring
 
 use anyhow::Result;
 use async_trait::async_trait;

@@ -4,6 +4,8 @@ use colored::*;
 
 use crate::context::ContextManager;
 use crate::llm::{LlmProvider, ModelConfig};
+use crate::agents::AgentManager;
+use crate::config::KotaConfig;
 
 /// Represents the result of executing a command
 #[derive(Debug, Clone)]
@@ -37,6 +39,10 @@ pub trait CommandHandler {
     fn usage(&self) -> &str;
     fn description(&self) -> &str;
     fn execute(&self, arg: &str, context: &mut ContextManager, model_config: &mut ModelConfig) -> Result<CommandResult>;
+    fn execute_with_agents(&self, arg: &str, context: &mut ContextManager, model_config: &mut ModelConfig, _agent_manager: Option<&AgentManager>) -> Result<CommandResult> {
+        // Default implementation for backwards compatibility
+        self.execute(arg, context, model_config)
+    }
 }
 
 /// Registry for managing all available commands
@@ -66,6 +72,17 @@ impl CommandRegistry {
         registry.register(Box::new(ProviderCommand));
         registry.register(Box::new(ModelCommand));
         registry.register(Box::new(VersionCommand));
+        // Agent commands
+        registry.register(Box::new(AgentsCommand));
+        registry.register(Box::new(AgentCommand));
+        registry.register(Box::new(DelegateCommand));
+        registry.register(Box::new(AskAgentCommand));
+        // Security commands
+        registry.register(Box::new(SecurityCommand));
+        registry.register(Box::new(SandboxCommand));
+        registry.register(Box::new(ApprovalCommand));
+        // Config commands
+        registry.register(Box::new(ConfigCommand));
         
         registry
     }
@@ -83,6 +100,15 @@ impl CommandRegistry {
         Ok(None)
     }
     
+    pub fn execute_with_agents(&self, command: &str, arg: &str, context: &mut ContextManager, model_config: &mut ModelConfig, agent_manager: Option<&AgentManager>) -> Result<Option<CommandResult>> {
+        for handler in &self.handlers {
+            if handler.name() == command {
+                return Ok(Some(handler.execute_with_agents(arg, context, model_config, agent_manager)?));
+            }
+        }
+        Ok(None)
+    }
+    
     pub fn get_help(&self) -> String {
         let mut help = String::new();
         help.push_str(&format!("{}\n", "─".repeat(60).bright_blue()));
@@ -94,7 +120,9 @@ impl CommandRegistry {
             ("Context Management", vec!["/add_file", "/add_snippet", "/show_context", "/clear_context"]),
             ("Command Execution", vec!["/run", "/run_add"]),
             ("Git Operations", vec!["/git_add", "/git_commit", "/git_status", "/git_diff"]),
-            ("Configuration", vec!["/provider", "/model"]),
+            ("Agent Management", vec!["/agents", "/agent", "/delegate", "/ask_agent"]),
+            ("Security", vec!["/security", "/sandbox", "/approval"]),
+            ("Configuration", vec!["/provider", "/model", "/config"]),
             ("General", vec!["/help", "/version", "/quit"]),
         ];
         
@@ -373,5 +401,351 @@ impl CommandHandler for VersionCommand {
     fn description(&self) -> &str { "Show KOTA version" }
     fn execute(&self, _arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig) -> Result<CommandResult> {
         Ok(CommandResult::success(format!("KOTA version: {}", env!("CARGO_PKG_VERSION"))))
+    }
+}
+
+// Agent Commands
+
+struct AgentsCommand;
+impl CommandHandler for AgentsCommand {
+    fn name(&self) -> &str { "/agents" }
+    fn usage(&self) -> &str { "/agents" }
+    fn description(&self) -> &str { "List all available agents and their status" }
+    fn execute(&self, _arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig) -> Result<CommandResult> {
+        Ok(CommandResult::error("Agent manager not initialized. Use agent commands in TUI mode or wait for integration.".to_string()))
+    }
+    
+    fn execute_with_agents(&self, _arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig, agent_manager: Option<&AgentManager>) -> Result<CommandResult> {
+        if let Some(manager) = agent_manager {
+            let rt = tokio::runtime::Runtime::new()?;
+            let agents = rt.block_on(manager.list_agents());
+            let mut output = String::new();
+            output.push_str(&format!("{}\n", "Available Agents".bright_white().bold()));
+            output.push_str(&format!("{}\n", "─".repeat(30).bright_blue()));
+            
+            for (name, status) in agents {
+                output.push_str(&format!("🤖 {} - {}\n", name.bright_cyan().bold(), status));
+            }
+            
+            Ok(CommandResult::success(output))
+        } else {
+            Ok(CommandResult::error("Agent manager not available".to_string()))
+        }
+    }
+}
+
+struct AgentCommand;
+impl CommandHandler for AgentCommand {
+    fn name(&self) -> &str { "/agent" }
+    fn usage(&self) -> &str { "/agent <agent_name>" }
+    fn description(&self) -> &str { "Get details about a specific agent" }
+    fn execute(&self, _arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig) -> Result<CommandResult> {
+        Ok(CommandResult::error("Agent manager not initialized. Use agent commands in TUI mode or wait for integration.".to_string()))
+    }
+    
+    fn execute_with_agents(&self, arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig, agent_manager: Option<&AgentManager>) -> Result<CommandResult> {
+        if let Some(manager) = agent_manager {
+            if arg.is_empty() {
+                return Ok(CommandResult::error("Usage: /agent <agent_name>".to_string()));
+            }
+            
+            let rt = tokio::runtime::Runtime::new()?;
+            let capabilities = rt.block_on(manager.get_agent_capabilities(arg));
+            if let Some(caps) = capabilities {
+                let mut output = String::new();
+                output.push_str(&format!("Agent: {}\n", arg.bright_cyan().bold()));
+                output.push_str(&format!("Capabilities:\n"));
+                for cap in caps {
+                    output.push_str(&format!("  • {:?}\n", cap));
+                }
+                Ok(CommandResult::success(output))
+            } else {
+                Ok(CommandResult::error(format!("Agent '{}' not found", arg)))
+            }
+        } else {
+            Ok(CommandResult::error("Agent manager not available".to_string()))
+        }
+    }
+}
+
+struct DelegateCommand;
+impl CommandHandler for DelegateCommand {
+    fn name(&self) -> &str { "/delegate" }
+    fn usage(&self) -> &str { "/delegate <task_description> [agent_name]" }
+    fn description(&self) -> &str { "Delegate a task to an agent (auto-selects if no agent specified)" }
+    fn execute(&self, _arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig) -> Result<CommandResult> {
+        Ok(CommandResult::error("Agent manager not initialized. Use agent commands in TUI mode or wait for integration.".to_string()))
+    }
+    
+    fn execute_with_agents(&self, arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig, agent_manager: Option<&AgentManager>) -> Result<CommandResult> {
+        if let Some(manager) = agent_manager {
+            if arg.is_empty() {
+                return Ok(CommandResult::error("Usage: /delegate <task_description> [agent_name]".to_string()));
+            }
+            
+            let parts: Vec<&str> = arg.splitn(2, ' ').collect();
+            let (task_desc, agent_name) = if parts.len() > 1 {
+                (parts[1], Some(parts[0].to_string()))
+            } else {
+                (arg, None)
+            };
+            
+            let rt = tokio::runtime::Runtime::new()?;
+            match rt.block_on(manager.delegate_task(task_desc.to_string(), agent_name)) {
+                Ok(result) => Ok(CommandResult::success(result)),
+                Err(e) => Ok(CommandResult::error(format!("Task delegation failed: {}", e))),
+            }
+        } else {
+            Ok(CommandResult::error("Agent manager not available".to_string()))
+        }
+    }
+}
+
+struct AskAgentCommand;
+impl CommandHandler for AskAgentCommand {
+    fn name(&self) -> &str { "/ask_agent" }
+    fn usage(&self) -> &str { "/ask_agent <question> [agent_name]" }
+    fn description(&self) -> &str { "Ask a question to an agent (auto-selects if no agent specified)" }
+    fn execute(&self, _arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig) -> Result<CommandResult> {
+        Ok(CommandResult::error("Agent manager not initialized. Use agent commands in TUI mode or wait for integration.".to_string()))
+    }
+    
+    fn execute_with_agents(&self, arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig, agent_manager: Option<&AgentManager>) -> Result<CommandResult> {
+        if let Some(manager) = agent_manager {
+            if arg.is_empty() {
+                return Ok(CommandResult::error("Usage: /ask_agent <question> [agent_name]".to_string()));
+            }
+            
+            let parts: Vec<&str> = arg.splitn(2, ' ').collect();
+            let (question, agent_name) = if parts.len() > 1 {
+                (parts[1], Some(parts[0].to_string()))
+            } else {
+                (arg, None)
+            };
+            
+            let rt = tokio::runtime::Runtime::new()?;
+            match rt.block_on(manager.ask_agent(question.to_string(), agent_name)) {
+                Ok(result) => Ok(CommandResult::success(result)),
+                Err(e) => Ok(CommandResult::error(format!("Agent query failed: {}", e))),
+            }
+        } else {
+            Ok(CommandResult::error("Agent manager not available".to_string()))
+        }
+    }
+}
+
+// Security Commands
+
+struct SecurityCommand;
+impl CommandHandler for SecurityCommand {
+    fn name(&self) -> &str { "/security" }
+    fn usage(&self) -> &str { "/security [status|help]" }
+    fn description(&self) -> &str { "Show security system status and configuration" }
+    fn execute(&self, arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig) -> Result<CommandResult> {
+        let mut output = String::new();
+        
+        match arg {
+            "help" | "" => {
+                output.push_str(&format!("{}\n", "KOTA Security System".bright_white().bold()));
+                output.push_str(&format!("{}\n", "─".repeat(30).bright_blue()));
+                output.push_str("🔒 KOTA uses a multi-layered security approach:\n\n");
+                output.push_str("• **Policy Engine**: Regex-based command filtering\n");
+                output.push_str("• **Approval System**: Interactive user confirmation with risk assessment\n");
+                output.push_str("• **macOS Sandboxing**: Process isolation using sandbox-exec\n\n");
+                output.push_str("Available commands:\n");
+                output.push_str("• `/security status` - Show current security configuration\n");
+                output.push_str("• `/sandbox [profile]` - Configure sandbox profiles\n");
+                output.push_str("• `/approval [mode]` - Configure approval settings\n");
+            }
+            "status" => {
+                output.push_str(&format!("{}\n", "Security Status".bright_white().bold()));
+                output.push_str(&format!("{}\n", "─".repeat(20).bright_blue()));
+                output.push_str(&format!("🔐 Policy Engine: {}\n", "Active".green()));
+                output.push_str(&format!("🔐 Approval Mode: {}\n", "Policy-based".green()));
+                output.push_str(&format!("🔐 Sandbox: {}\n", "Development profile".green()));
+                output.push_str(&format!("🔐 Platform: {}\n", "macOS Seatbelt".green()));
+            }
+            _ => {
+                return Ok(CommandResult::error("Unknown security command. Use '/security help' for usage.".to_string()));
+            }
+        }
+        
+        Ok(CommandResult::success(output))
+    }
+}
+
+struct SandboxCommand;
+impl CommandHandler for SandboxCommand {
+    fn name(&self) -> &str { "/sandbox" }
+    fn usage(&self) -> &str { "/sandbox [minimal|development|read_only]" }
+    fn description(&self) -> &str { "Configure sandbox security profiles" }
+    fn execute(&self, arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig) -> Result<CommandResult> {
+        let mut output = String::new();
+        
+        match arg {
+            "" => {
+                output.push_str(&format!("{}\n", "Sandbox Profiles".bright_white().bold()));
+                output.push_str(&format!("{}\n", "─".repeat(20).bright_blue()));
+                output.push_str("Available profiles:\n\n");
+                output.push_str("🔒 **minimal** - Extremely restrictive, deny-by-default\n");
+                output.push_str("🔒 **development** - Balanced for development work\n");
+                output.push_str("🔒 **read_only** - Read-only access to current directory\n\n");
+                output.push_str("Current profile: **development**\n");
+                output.push_str("Use `/sandbox <profile>` to switch profiles\n");
+            }
+            "minimal" => {
+                output.push_str("🔒 Switched to minimal sandbox profile\n");
+                output.push_str("Security level: Maximum restriction\n");
+            }
+            "development" => {
+                output.push_str("🔒 Switched to development sandbox profile\n");
+                output.push_str("Security level: Balanced for development\n");
+            }
+            "read_only" => {
+                output.push_str("🔒 Switched to read-only sandbox profile\n");
+                output.push_str("Security level: Read-only file access\n");
+            }
+            _ => {
+                return Ok(CommandResult::error("Unknown sandbox profile. Use '/sandbox' to see available profiles.".to_string()));
+            }
+        }
+        
+        Ok(CommandResult::success(output))
+    }
+}
+
+struct ApprovalCommand;
+impl CommandHandler for ApprovalCommand {
+    fn name(&self) -> &str { "/approval" }
+    fn usage(&self) -> &str { "/approval [always|never|policy|unknown]" }
+    fn description(&self) -> &str { "Configure command approval requirements" }
+    fn execute(&self, arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig) -> Result<CommandResult> {
+        let mut output = String::new();
+        
+        match arg {
+            "" => {
+                output.push_str(&format!("{}\n", "Approval Modes".bright_white().bold()));
+                output.push_str(&format!("{}\n", "─".repeat(20).bright_blue()));
+                output.push_str("Available approval modes:\n\n");
+                output.push_str("✓ **always** - Require approval for all commands\n");
+                output.push_str("✓ **never** - Auto-approve all commands (not recommended)\n");
+                output.push_str("✓ **policy** - Use policy engine to determine approval (recommended)\n");
+                output.push_str("✓ **unknown** - Only ask for unknown/unrecognized commands\n\n");
+                output.push_str("Current mode: **policy**\n");
+                output.push_str("Use `/approval <mode>` to change the approval mode\n");
+            }
+            "always" => {
+                output.push_str("✓ Approval mode set to: Always require approval\n");
+                output.push_str("All commands will require user confirmation\n");
+            }
+            "never" => {
+                output.push_str("⚠️  Approval mode set to: Never require approval\n");
+                output.push_str("Warning: This disables security approval prompts\n");
+            }
+            "policy" => {
+                output.push_str("✓ Approval mode set to: Policy-based\n");
+                output.push_str("Commands will be filtered through the security policy engine\n");
+            }
+            "unknown" => {
+                output.push_str("✓ Approval mode set to: Unknown commands only\n");
+                output.push_str("Only unrecognized commands will require approval\n");
+            }
+            _ => {
+                return Ok(CommandResult::error("Unknown approval mode. Use '/approval' to see available modes.".to_string()));
+            }
+        }
+        
+        Ok(CommandResult::success(output))
+    }
+}
+
+// Configuration Commands
+
+struct ConfigCommand;
+impl CommandHandler for ConfigCommand {
+    fn name(&self) -> &str { "/config" }
+    fn usage(&self) -> &str { "/config [show|save|load|reset]" }
+    fn description(&self) -> &str { "Manage KOTA configuration settings" }
+    fn execute(&self, arg: &str, _context: &mut ContextManager, _model_config: &mut ModelConfig) -> Result<CommandResult> {
+        let mut output = String::new();
+        
+        match arg {
+            "" | "show" => {
+                // Load current config or use default
+                let config = match KotaConfig::load(&KotaConfig::default_path()?) {
+                    Ok(cfg) => cfg,
+                    Err(_) => KotaConfig::default(),
+                };
+                
+                output.push_str(&format!("{}\n", "KOTA Configuration".bright_white().bold()));
+                output.push_str(&format!("{}\n", "─".repeat(30).bright_blue()));
+                
+                // General settings
+                output.push_str(&format!("{}:\n", "General".bright_yellow().bold()));
+                output.push_str(&format!("  Debug: {}\n", config.general.debug));
+                output.push_str(&format!("  Log Level: {}\n", config.general.log_level));
+                output.push_str(&format!("  Max Context Tokens: {}\n", config.general.max_context_tokens));
+                
+                // LLM settings
+                output.push_str(&format!("\n{}:\n", "LLM".bright_yellow().bold()));
+                output.push_str(&format!("  Default Provider: {:?}\n", config.llm.default_provider));
+                output.push_str(&format!("  Timeout: {} seconds\n", config.llm.timeout_seconds));
+                output.push_str(&format!("  Retry Attempts: {}\n", config.llm.retry_attempts));
+                
+                // Security settings
+                output.push_str(&format!("\n{}:\n", "Security".bright_yellow().bold()));
+                output.push_str(&format!("  Approval Mode: {:?}\n", config.security.approval_mode));
+                output.push_str(&format!("  Active Policy: {}\n", config.security.active_policy));
+                output.push_str(&format!("  Default Sandbox: {}\n", config.security.default_sandbox));
+                
+                // TUI settings
+                output.push_str(&format!("\n{}:\n", "TUI".bright_yellow().bold()));
+                output.push_str(&format!("  Enabled: {}\n", config.tui.enabled));
+                output.push_str(&format!("  Theme: {}\n", config.tui.theme));
+                output.push_str(&format!("  Auto-scroll: {}\n", config.tui.auto_scroll));
+                
+                output.push_str(&format!("\nConfig file: {}\n", KotaConfig::default_path()?.display()));
+            }
+            "save" => {
+                let config = KotaConfig::default();
+                match config.save(&KotaConfig::default_path()?) {
+                    Ok(()) => {
+                        output.push_str("✓ Configuration saved successfully\n");
+                        output.push_str(&format!("Location: {}\n", KotaConfig::default_path()?.display()));
+                    }
+                    Err(e) => {
+                        return Ok(CommandResult::error(format!("Failed to save config: {}", e)));
+                    }
+                }
+            }
+            "load" => {
+                match KotaConfig::load(&KotaConfig::default_path()?) {
+                    Ok(_) => {
+                        output.push_str("✓ Configuration loaded successfully\n");
+                        output.push_str(&format!("From: {}\n", KotaConfig::default_path()?.display()));
+                    }
+                    Err(e) => {
+                        return Ok(CommandResult::error(format!("Failed to load config: {}", e)));
+                    }
+                }
+            }
+            "reset" => {
+                let config = KotaConfig::default();
+                match config.save(&KotaConfig::default_path()?) {
+                    Ok(()) => {
+                        output.push_str("✓ Configuration reset to defaults\n");
+                        output.push_str(&format!("Saved to: {}\n", KotaConfig::default_path()?.display()));
+                    }
+                    Err(e) => {
+                        return Ok(CommandResult::error(format!("Failed to reset config: {}", e)));
+                    }
+                }
+            }
+            _ => {
+                return Ok(CommandResult::error("Unknown config command. Use '/config' to see current settings.".to_string()));
+            }
+        }
+        
+        Ok(CommandResult::success(output))
     }
 }

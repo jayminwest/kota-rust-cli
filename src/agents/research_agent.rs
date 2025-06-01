@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// ResearchAgent: Specialized for research and investigation tasks
 
 use anyhow::Result;
 use async_trait::async_trait;

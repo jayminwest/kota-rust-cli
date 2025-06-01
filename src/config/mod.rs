@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// Configuration system for KOTA runtime settings and persistence
 
 use std::path::{Path, PathBuf};
 use anyhow::{Result, Context, bail};

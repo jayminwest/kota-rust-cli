@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// Secure command executor integrating sandboxing, policy, and approval systems
 
 use std::sync::Arc;
 use tokio::sync::Mutex;

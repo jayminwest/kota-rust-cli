@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// Core agent traits and data structures
 
 use anyhow::Result;
 use async_trait::async_trait;

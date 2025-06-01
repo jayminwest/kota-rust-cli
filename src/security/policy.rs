@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// Security policy engine for command filtering and access control
 
 use std::collections::HashMap;
 use anyhow::{Result, bail};

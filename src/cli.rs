@@ -6,6 +6,9 @@ use crate::context::ContextManager;
 use crate::llm::{LlmProvider, ModelConfig};
 use crate::commands::{CommandRegistry, CommandResult};
 use crate::{input, thinking, sr_parser, editor, cmd_parser, tui, render_markdown};
+use crate::agents::AgentManager;
+use crate::memory::MemoryManager;
+use crate::security::{SecureExecutor, ApprovalMode};
 
 /// Runs the classic CLI interface
 pub async fn run_classic_cli(_context_manager: ContextManager, _model_config: ModelConfig) -> Result<()> {
@@ -18,12 +21,26 @@ pub async fn run_classic_cli(_context_manager: ContextManager, _model_config: Mo
     let mut model_config = ModelConfig::default();
     let command_registry = CommandRegistry::new();
     
+    // Initialize agents
+    let memory_manager = MemoryManager::new()?;
+    let shared_context = std::sync::Arc::new(tokio::sync::Mutex::new(ContextManager::new()));
+    let agent_manager = AgentManager::new(
+        shared_context.clone(),
+        model_config.clone(),
+        std::sync::Arc::new(tokio::sync::Mutex::new(memory_manager)),
+    ).await?;
+    
+    // Initialize secure executor
+    let mut secure_executor = SecureExecutor::new(ApprovalMode::Policy);
+    secure_executor.set_context_manager(shared_context.clone());
+    
     // Show provider status and check API key
     show_provider_status(&model_config);
     
     println!("{}", "─".repeat(header_width).dimmed());
     println!("{} Type '/help' for available commands", "💡".yellow());
     println!("{} Type anything else to chat with AI", "💬".bright_blue());
+    println!("{} Type '/agents' to see available AI agents", "🤖".bright_green());
     println!();
 
     loop {
@@ -35,10 +52,10 @@ pub async fn run_classic_cli(_context_manager: ContextManager, _model_config: Mo
         }
         
         if trimmed_input.starts_with('/') {
-            if let Err(e) = handle_command(trimmed_input, &mut context_manager, &mut model_config, &command_registry).await {
+            if let Err(e) = handle_command(trimmed_input, &mut context_manager, &mut model_config, &command_registry, &agent_manager, &shared_context).await {
                 eprintln!("Command error: {}", e);
             }
-        } else if let Err(e) = handle_ai_interaction(trimmed_input, &mut context_manager, &model_config).await {
+        } else if let Err(e) = handle_ai_interaction(trimmed_input, &mut context_manager, &model_config, &secure_executor).await {
             eprintln!("Error in AI interaction: {}", e);
         }
         
@@ -75,6 +92,8 @@ async fn handle_command(
     context_manager: &mut ContextManager,
     model_config: &mut ModelConfig,
     command_registry: &CommandRegistry,
+    agent_manager: &AgentManager,
+    shared_context: &std::sync::Arc<tokio::sync::Mutex<ContextManager>>,
 ) -> Result<()> {
     let parts: Vec<&str> = input.splitn(2, ' ').collect();
     let command = parts[0];
@@ -99,7 +118,19 @@ async fn handle_command(
             std::process::exit(0);
         }
         _ => {
-            match command_registry.execute(command, arg, context_manager, model_config)? {
+            // Sync context to shared context before agent commands
+            {
+                let mut shared = shared_context.lock().await;
+                *shared = ContextManager::new();
+                for item in &context_manager.items {
+                    shared.add_snippet(item.clone());
+                }
+                for path in &context_manager.file_paths {
+                    let _ = shared.add_file(path);
+                }
+            }
+            
+            match command_registry.execute_with_agents(command, arg, context_manager, model_config, Some(agent_manager))? {
                 Some(result) => {
                     display_command_result(result);
                     Ok(())
@@ -131,6 +162,7 @@ async fn handle_ai_interaction(
     input: &str,
     context_manager: &mut ContextManager,
     model_config: &ModelConfig,
+    secure_executor: &SecureExecutor,
 ) -> Result<()> {
     let spinner = thinking::show_llm_thinking();
     
@@ -149,7 +181,7 @@ async fn handle_ai_interaction(
             handle_sr_blocks(&response, context_manager).await?;
             
             // Handle command blocks
-            handle_command_blocks(&response, context_manager).await?;
+            handle_command_blocks(&response, context_manager, secure_executor).await?;
         }
         Err(e) => {
             eprintln!("Error sending request to LLM: {}", e);
@@ -172,7 +204,7 @@ async fn handle_sr_blocks(response: &str, context_manager: &ContextManager) -> R
     Ok(())
 }
 
-async fn handle_command_blocks(response: &str, context_manager: &mut ContextManager) -> Result<()> {
+async fn handle_command_blocks(response: &str, context_manager: &mut ContextManager, secure_executor: &SecureExecutor) -> Result<()> {
     let command_blocks = cmd_parser::parse_command_blocks(response)?;
     if !command_blocks.is_empty() {
         println!("\n{}", "The AI suggested the following commands:".yellow().bold());
@@ -188,31 +220,19 @@ async fn handle_command_blocks(response: &str, context_manager: &mut ContextMana
         
         if user_response == "y" || user_response == "yes" || user_response == "a" || user_response == "all" {
             for cmd_block in &command_blocks {
-                println!("\n{} {}", "Executing:".green().bold(), cmd_block.command);
-                let output = execute_shell_command(&cmd_block.command).await;
-                match output {
-                    Ok((stdout, stderr, success)) => {
-                        if !stdout.trim().is_empty() {
-                            println!("--- stdout ---\n{}\n--- end stdout ---", stdout);
-                        }
-                        if !stderr.trim().is_empty() {
-                            eprintln!("--- stderr ---\n{}\n--- end stderr ---", stderr);
+                println!("\n{} {}", "Executing securely:".green().bold(), cmd_block.command);
+                match secure_executor.execute_command_block(cmd_block).await {
+                    Ok(output) => {
+                        if !output.trim().is_empty() {
+                            println!("{}", output);
                         }
                         // Add command output to context for potential follow-up
-                        if !stdout.trim().is_empty() {
-                            context_manager.add_snippet(format!("Output of command '{}': \n{}", cmd_block.command, stdout));
-                        }
-                        if !stderr.trim().is_empty() {
-                            context_manager.add_snippet(format!("Error output of command '{}': \n{}", cmd_block.command, stderr));
-                        }
-                        if !success {
-                            eprintln!("Command '{}' failed", cmd_block.command);
-                        }
+                        context_manager.add_snippet(format!("Secure execution of '{}': \n{}", cmd_block.command, output));
                     }
                     Err(e) => {
-                        eprintln!("Error executing command: {}", e);
+                        eprintln!("Secure execution failed: {}", e);
                         // Add error to context as well
-                        context_manager.add_snippet(format!("Error executing command '{}': {}", cmd_block.command, e));
+                        context_manager.add_snippet(format!("Secure execution error for '{}': {}", cmd_block.command, e));
                     }
                 }
             }
@@ -223,16 +243,4 @@ async fn handle_command_blocks(response: &str, context_manager: &mut ContextMana
     Ok(())
 }
 
-async fn execute_shell_command(command: &str) -> Result<(String, String, bool)> {
-    let output = tokio::process::Command::new("sh")
-        .arg("-c")
-        .arg(command)
-        .output()
-        .await?;
-    
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    let success = output.status.success();
-    
-    Ok((stdout, stderr, success))
-}
+// Secure command execution is now handled by SecureExecutor
