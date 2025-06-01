@@ -10,12 +10,12 @@ mod input;
 mod thinking;
 mod prompts;
 mod tui;
-mod tui_events;
 mod dynamic_prompts;
 mod file_browser;
 mod memory;
 mod commands;
 mod cli;
+mod agents;
 
 use context::ContextManager;
 use llm::ModelConfig;
