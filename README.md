@@ -50,8 +50,9 @@ KOTA represents an exploration of distributed cognition – where human and AI c
 - **Context Management**: Maintain conversation context by adding files and code snippets
 - **Knowledge Base Integration**: Automatic conversation storage and retrieval system
 - **Auto-Commit**: Automatically creates git commits with AI-generated commit messages
-- **Multiple LLM Providers**: Works with both Google Gemini (cloud, default) and Ollama (local)
+- **Multiple LLM Providers**: Works with Claude/Anthropic (default), Google Gemini, and Ollama (local)
 - **Multi-Agent Ready**: Infrastructure for advanced multi-agent coordination and task delegation
+- **macOS Security Framework**: Sandboxing, policy engine, and approval system for safe command execution
 
 ### 🔧 Developer Experience
 - **Advanced Input Handling**: Multi-line input with smart detection and visual feedback
@@ -66,7 +67,13 @@ KOTA represents an exploration of distributed cognition – where human and AI c
 
 - [Rust](https://rustup.rs/) (latest stable version)
 
-### For Google Gemini (Cloud LLM) - Default
+### For Claude/Anthropic (Cloud LLM) - Default
+- Anthropic API key from [Anthropic Console](https://console.anthropic.com/)
+  ```bash
+  export ANTHROPIC_API_KEY=your_api_key_here
+  ```
+
+### For Google Gemini (Cloud LLM) - Alternative
 - Google Gemini API key from [Google AI Studio](https://ai.google.dev/)
   ```bash
   export GEMINI_API_KEY=your_api_key_here
@@ -127,7 +134,7 @@ The TUI provides an interactive multi-pane interface:
 - `/git_commit "<message>"` - Create git commit
 - `/git_status` - Show git status
 - `/git_diff [<path>]` - Show git diff
-- `/provider <ollama|gemini>` - Switch between LLM providers
+- `/provider <anthropic|gemini|ollama>` - Switch between LLM providers
 - `/help` - Show all available commands
 - `/quit` - Exit application
 
@@ -220,7 +227,7 @@ You: Add a new command /version that shows the current version of KOTA
 
 ### Core Components
 - **Terminal User Interface**: Advanced multi-pane TUI with auto-scroll, enhanced commands, and multi-line input
-- **LLM Integration**: Supports Google Gemini (cloud) and Ollama (local) with multi-agent infrastructure
+- **LLM Integration**: Supports Claude/Anthropic (default), Google Gemini, and Ollama (local)
 - **Search/Replace Parser**: Parses structured file edit suggestions
 - **Enhanced Command System**: Individual command execution with status tracking and navigation
 - **File Editor**: Handles interactive file modifications with safety checks
@@ -228,13 +235,15 @@ You: Add a new command /version that shows the current version of KOTA
 - **Memory Manager**: Persistent knowledge base with automatic conversation storage
 - **File Browser**: Interactive navigation with sudo support
 - **Multi-line Input Handler**: Smart detection of code blocks, brackets, and continuations
+- **Security Framework**: macOS-focused sandboxing, policy engine, and user approval system
 
 ### Quality Standards
 - **Zero Clippy Warnings**: Passes `cargo clippy -- -D warnings` with no issues
-- **Comprehensive Testing**: 52+ tests covering all core functionality including new features
-- **Dead Code Elimination**: No unused code, methods, or dependencies
+- **Comprehensive Testing**: 63+ tests covering all core functionality including security features
+- **Dead Code Elimination**: No unused code, methods, or dependencies (framework code uses `#[allow(dead_code)]`)
 - **Memory Safety**: Safe async patterns with proper mutex handling
 - **Error Handling**: Robust error handling with `anyhow` throughout
+- **Zero Tolerance Policy**: No warnings or errors in compilation or tests
 
 ### Knowledge Base & Memory System
 
@@ -270,14 +279,27 @@ KOTA is designed with infrastructure ready for advanced multi-agent capabilities
 - **Concurrent LLM Support**: ModelConfig system supports multiple simultaneous connections
 - **Extensible Design**: Modular architecture ready for coding, research, planning, and other specialized agents
 
+### Security Architecture (macOS)
+
+KOTA includes a comprehensive security framework designed for macOS:
+
+- **macOS Seatbelt Sandboxing**: Process isolation using sandbox-exec
+- **Policy Engine**: Regex-based command filtering with customizable rules
+- **Approval System**: Interactive user prompts with risk assessment
+- **Secure Command Execution**: Three-layer security (sandbox + policy + approval)
+- **Configuration-Driven**: TOML-based security policies and settings
+
 ## Development
 
 ```bash
 # Build
 cargo build
 
-# Run tests (52+ comprehensive tests)
+# Run tests (63+ comprehensive tests)
 cargo test
+
+# Run tests including ignored sandbox tests
+cargo test -- --ignored
 
 # Format code
 cargo fmt
@@ -288,22 +310,35 @@ cargo clippy -- -D warnings
 
 ## Configuration
 
-### Google Gemini (Cloud) - Default
+### Claude/Anthropic (Cloud) - Default
+Set your API key as an environment variable:
+```bash
+export ANTHROPIC_API_KEY=your_api_key_here
+```
+- Default model: `claude-sonnet-4-20250514` (Claude 4 Sonnet)
+- Timeout: 240 seconds (4 minutes)
+
+### Google Gemini (Cloud) - Alternative
 Set your API key as an environment variable:
 ```bash
 export GEMINI_API_KEY=your_api_key_here
 ```
+- Default model: `gemini-2.5-pro-preview-05-06`
+- Timeout: 360 seconds (6 minutes)
 
 ### Ollama (Local)
 Ensure Ollama is running with your preferred model:
 ```bash
 ollama serve
 ```
+- Default model: `qwen3:8b`
+- Timeout: 120 seconds (2 minutes)
 
 ### Provider Switching
 Switch providers in both TUI and CLI:
 ```bash
-/provider gemini    # Use Google Gemini (default)
+/provider anthropic # Use Claude/Anthropic (default)
+/provider gemini    # Use Google Gemini
 /provider ollama    # Use local Ollama
 ```
 
@@ -313,6 +348,13 @@ Customize KOTA's behavior by editing `prompts.toml`:
 - Commit message generation templates
 - Command execution guidelines
 - Search/Replace format specifications
+
+### Security Configuration (macOS)
+KOTA includes a comprehensive security framework:
+- **Sandbox Profiles**: Minimal, read-only, and development sandboxing modes
+- **Policy Engine**: Command filtering with allow/deny rules
+- **Approval System**: User confirmation for commands with risk assessment
+- **TOML Configuration**: Full security customization via config files
 
 ## Contributing
 

@@ -368,3 +368,35 @@ KOTA maintains the highest code quality standards with comprehensive testing and
 - `unicode-width`, `textwrap` - Text formatting
 - `hostname`, `whoami` - System information
 - `tempfile` - Test utilities (dev dependency)
+
+### Recent Architectural Changes
+
+#### Default LLM Provider Update (January 2025)
+- Changed default provider from Gemini to Anthropic Claude
+- Updated configuration to use claude-sonnet-4-20250514 (Claude 4 Sonnet) as default model
+- Maintained backward compatibility with Gemini and Ollama providers
+- Added PartialEq derive to LlmProvider for testing support
+
+#### Security Framework Implementation (January 2025)
+- Added comprehensive macOS security framework with sandboxing, policy engine, and approval system
+- Implemented modular security components in `src/security/` directory
+- Created TOML-based configuration system in `src/config/`
+- Fixed policy engine bug where denied arguments weren't checked before allowed arguments
+
+#### Code Quality Improvements (January 2025)
+- Achieved zero tolerance policy: no warnings or errors in compilation or tests
+- Increased test coverage from 52 to 63 tests
+- Added `#[allow(dead_code)]` to framework modules (agents, security, config) for future use
+- Fixed all clippy warnings including manual flatten patterns and redundant imports
+
+#### TUI Modularization (December 2024)
+- Broke down monolithic 1,793-line tui.rs into modular components
+- Created tui/ subdirectory with app.rs, rendering.rs, types.rs, widgets.rs, and tests.rs
+- Improved maintainability and testability of TUI code
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+We have a ZERO TOLERANCE policy for ALL warnings and dead code. Every line of code must be used and clean.

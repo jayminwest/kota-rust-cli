@@ -8,9 +8,9 @@ use gemini_client_api::gemini::{
 };
 use crate::prompts::PromptsConfig;
 use tokio::time::timeout;
+use std::str::FromStr;
 
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum LlmProvider {
     Ollama,
     Gemini,
@@ -47,6 +47,18 @@ impl ModelConfig {
     }
 }
 
+impl FromStr for LlmProvider {
+    type Err = anyhow::Error;
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "ollama" => Ok(LlmProvider::Ollama),
+            "gemini" => Ok(LlmProvider::Gemini),
+            "anthropic" => Ok(LlmProvider::Anthropic),
+            _ => Err(anyhow::anyhow!("Unknown provider: {}", s)),
+        }
+    }
+}
 
 // Structs for Ollama's /api/chat endpoint (non-streaming)
 #[derive(Serialize)]

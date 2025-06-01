@@ -1,0 +1,1 @@
+(version 1)(deny default)(allow process-exec)(allow process-fork)(allow signal)(allow system-socket)(allow file-read-metadata)

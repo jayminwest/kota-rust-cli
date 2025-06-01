@@ -16,6 +16,8 @@ mod memory;
 mod commands;
 mod cli;
 mod agents;
+mod security;
+mod config;
 
 use context::ContextManager;
 use llm::ModelConfig;
