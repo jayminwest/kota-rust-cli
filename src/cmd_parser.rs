@@ -55,6 +55,7 @@ pub fn contains_command_blocks(response: &str) -> bool {
     command_pattern.is_match(response)
 }
 
+#[allow(dead_code)]
 pub async fn execute_command(cmd: &str) -> Result<(String, String, bool)> {
     let output = Command::new("sh")
         .arg("-c")
