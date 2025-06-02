@@ -1,6 +1,6 @@
-use std::process::Command;
-use regex::Regex;
 use anyhow::Result;
+use regex::Regex;
+use std::process::Command;
 
 #[derive(Debug, Clone)]
 pub struct CommandBlock {
@@ -14,12 +14,15 @@ pub fn parse_command_blocks(response: &str) -> Result<Vec<CommandBlock>> {
 
     while i < lines.len() {
         // Look for command block markers
-        if lines[i].trim().starts_with("```bash") || lines[i].trim().starts_with("```sh") || lines[i].trim() == "```command" {
+        if lines[i].trim().starts_with("```bash")
+            || lines[i].trim().starts_with("```sh")
+            || lines[i].trim() == "```command"
+        {
             i += 1; // Skip the opening marker
-            
+
             let mut command_lines = Vec::new();
             let mut found_end = false;
-            
+
             // Collect command lines until we find the closing ```
             while i < lines.len() {
                 let line = lines[i].trim();
@@ -31,22 +34,22 @@ pub fn parse_command_blocks(response: &str) -> Result<Vec<CommandBlock>> {
                 command_lines.push(line);
                 i += 1;
             }
-            
+
             if !found_end {
-                return Err(anyhow::anyhow!("Malformed command block: missing closing ```"));
+                return Err(anyhow::anyhow!(
+                    "Malformed command block: missing closing ```"
+                ));
             }
-            
+
             if !command_lines.is_empty() {
                 let command = command_lines.join(" && ");
-                blocks.push(CommandBlock {
-                    command,
-                });
+                blocks.push(CommandBlock { command });
             }
         } else {
             i += 1;
         }
     }
-    
+
     Ok(blocks)
 }
 
@@ -62,11 +65,11 @@ pub async fn execute_command(cmd: &str) -> Result<(String, String, bool)> {
         .arg(cmd)
         .output()
         .map_err(|e| anyhow::anyhow!("Failed to execute command '{}': {}", cmd, e))?;
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     let success = output.status.success();
-    
+
     Ok((stdout, stderr, success))
 }
 
@@ -100,9 +103,13 @@ That should work!"#;
 
     #[test]
     fn test_contains_command_blocks() {
-        assert!(contains_command_blocks("some text ```bash\nls\n``` more text"));
+        assert!(contains_command_blocks(
+            "some text ```bash\nls\n``` more text"
+        ));
         assert!(contains_command_blocks("```sh\necho hello\n```"));
-        assert!(!contains_command_blocks("regular text without command blocks"));
+        assert!(!contains_command_blocks(
+            "regular text without command blocks"
+        ));
     }
 
     #[test]
@@ -115,7 +122,10 @@ echo "hello"
 "#;
         let result = parse_command_blocks(missing_close);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("missing closing ```"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("missing closing ```"));
 
         // Empty command block
         let empty_block = r#"
@@ -186,7 +196,10 @@ ls -la
 "#;
         let blocks = parse_command_blocks(multiple_commands).unwrap();
         assert_eq!(blocks.len(), 1);
-        assert_eq!(blocks[0].command, "cd /tmp && mkdir test_dir && cd test_dir && touch file.txt && ls -la");
+        assert_eq!(
+            blocks[0].command,
+            "cd /tmp && mkdir test_dir && cd test_dir && touch file.txt && ls -la"
+        );
 
         // Single command should not have &&
         let single_command = r#"

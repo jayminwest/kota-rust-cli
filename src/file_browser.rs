@@ -1,9 +1,9 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
 use crossterm::event::{KeyCode, KeyEvent};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Clone, Debug)]
 pub struct FileItem {
@@ -50,17 +50,17 @@ impl FileBrowser {
         browser.refresh()?;
         Ok(browser)
     }
-    
+
     pub fn refresh(&mut self) -> Result<()> {
         self.items = self.read_directory(&self.current_dir)?;
         self.sort_items();
         self.selected_index = self.selected_index.min(self.items.len().saturating_sub(1));
         Ok(())
     }
-    
+
     fn read_directory(&self, path: &Path) -> Result<Vec<FileItem>> {
         let mut items = Vec::new();
-        
+
         // Try normal read first
         let entries = match fs::read_dir(path) {
             Ok(entries) => entries,
@@ -70,7 +70,7 @@ impl FileBrowser {
             }
             Err(e) => return Err(e.into()),
         };
-        
+
         // Add parent directory entry if not at root
         if path.parent().is_some() {
             items.push(FileItem {
@@ -84,23 +84,24 @@ impl FileBrowser {
                 requires_sudo: false,
             });
         }
-        
+
         for entry in entries {
             let entry = entry?;
             let metadata = entry.metadata()?;
             let name = entry.file_name().to_string_lossy().to_string();
-            
+
             // Skip hidden files unless show_hidden is true
             if !self.show_hidden && name.starts_with('.') {
                 continue;
             }
-            
-            let modified = metadata.modified()
+
+            let modified = metadata
+                .modified()
                 .map(DateTime::<Local>::from)
                 .unwrap_or_else(|_| Local::now());
-            
+
             let permissions = self.format_permissions(&metadata);
-            
+
             items.push(FileItem {
                 name,
                 path: entry.path(),
@@ -112,23 +113,26 @@ impl FileBrowser {
                 requires_sudo: false,
             });
         }
-        
+
         Ok(items)
     }
-    
+
     fn read_directory_with_sudo(&self, path: &Path) -> Result<Vec<FileItem>> {
         // Use sudo ls to read directory contents
         let output = Command::new("sudo")
             .args(["ls", "-la", path.to_str().unwrap()])
             .output()
             .context("Failed to execute sudo ls")?;
-        
+
         if !output.status.success() {
-            return Err(anyhow::anyhow!("sudo ls failed: {}", String::from_utf8_lossy(&output.stderr)));
+            return Err(anyhow::anyhow!(
+                "sudo ls failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
         }
-        
+
         let mut items = Vec::new();
-        
+
         // Add parent directory
         if path.parent().is_some() {
             items.push(FileItem {
@@ -142,32 +146,33 @@ impl FileBrowser {
                 requires_sudo: false,
             });
         }
-        
+
         // Parse ls output
         let output_str = String::from_utf8_lossy(&output.stdout);
-        for line in output_str.lines().skip(1) { // Skip total line
+        for line in output_str.lines().skip(1) {
+            // Skip total line
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() < 9 {
                 continue;
             }
-            
+
             let permissions = parts[0].to_string();
             let size: u64 = parts[4].parse().unwrap_or(0);
             let name = parts[8..].join(" ");
-            
+
             // Skip . and .. entries
             if name == "." || name == ".." {
                 continue;
             }
-            
+
             // Skip hidden files unless show_hidden is true
             if !self.show_hidden && name.starts_with('.') {
                 continue;
             }
-            
+
             let is_dir = permissions.starts_with('d');
             let is_symlink = permissions.starts_with('l');
-            
+
             items.push(FileItem {
                 name: name.clone(),
                 path: path.join(&name),
@@ -179,10 +184,10 @@ impl FileBrowser {
                 requires_sudo: true,
             });
         }
-        
+
         Ok(items)
     }
-    
+
     fn format_permissions(&self, metadata: &fs::Metadata) -> String {
         #[cfg(unix)]
         {
@@ -199,7 +204,7 @@ impl FileBrowser {
             }
         }
     }
-    
+
     fn sort_items(&mut self) {
         self.items.sort_by(|a, b| {
             // Always keep .. at the top
@@ -209,35 +214,41 @@ impl FileBrowser {
             if b.name == ".." {
                 return std::cmp::Ordering::Greater;
             }
-            
+
             // Then sort directories before files
             match (a.is_dir, b.is_dir) {
                 (true, false) => return std::cmp::Ordering::Less,
                 (false, true) => return std::cmp::Ordering::Greater,
                 _ => {}
             }
-            
+
             // Then sort by selected criteria
             match self.sort_by {
                 SortBy::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
                 SortBy::Size => b.size.cmp(&a.size),
                 SortBy::Modified => b.modified.cmp(&a.modified),
                 SortBy::Type => {
-                    let ext_a = Path::new(&a.name).extension().and_then(|s| s.to_str()).unwrap_or("");
-                    let ext_b = Path::new(&b.name).extension().and_then(|s| s.to_str()).unwrap_or("");
+                    let ext_a = Path::new(&a.name)
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("");
+                    let ext_b = Path::new(&b.name)
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("");
                     ext_a.cmp(ext_b)
                 }
             }
         });
     }
-    
+
     pub fn navigate_to(&mut self, path: PathBuf) -> Result<()> {
         self.current_dir = path;
         self.selected_index = 0;
         self.scroll_offset = 0;
         self.refresh()
     }
-    
+
     pub fn enter_selected(&mut self) -> Result<Option<PathBuf>> {
         if let Some(item) = self.get_selected() {
             if item.is_dir {
@@ -250,11 +261,11 @@ impl FileBrowser {
             Ok(None)
         }
     }
-    
+
     pub fn get_selected(&self) -> Option<&FileItem> {
         self.items.get(self.selected_index)
     }
-    
+
     pub fn move_up(&mut self) {
         if self.selected_index > 0 {
             self.selected_index -= 1;
@@ -263,7 +274,7 @@ impl FileBrowser {
             }
         }
     }
-    
+
     pub fn move_down(&mut self) {
         if self.selected_index < self.items.len().saturating_sub(1) {
             self.selected_index += 1;
@@ -275,32 +286,32 @@ impl FileBrowser {
             }
         }
     }
-    
+
     pub fn page_up(&mut self, page_size: usize) {
         self.selected_index = self.selected_index.saturating_sub(page_size);
         self.scroll_offset = self.scroll_offset.saturating_sub(page_size);
     }
-    
+
     pub fn page_down(&mut self, page_size: usize) {
         let max_index = self.items.len().saturating_sub(1);
         self.selected_index = (self.selected_index + page_size).min(max_index);
     }
-    
+
     pub fn toggle_hidden(&mut self) -> Result<()> {
         self.show_hidden = !self.show_hidden;
         self.refresh()
     }
-    
+
     pub fn toggle_sudo(&mut self) -> Result<()> {
         self.use_sudo = !self.use_sudo;
         self.refresh()
     }
-    
+
     pub fn change_sort(&mut self, sort_by: SortBy) {
         self.sort_by = sort_by;
         self.sort_items();
     }
-    
+
     pub fn handle_key(&mut self, key: KeyEvent) -> Result<Option<PathBuf>> {
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
@@ -319,9 +330,7 @@ impl FileBrowser {
                 self.page_down(10);
                 Ok(None)
             }
-            KeyCode::Enter | KeyCode::Char('l') => {
-                self.enter_selected()
-            }
+            KeyCode::Enter | KeyCode::Char('l') => self.enter_selected(),
             KeyCode::Char('h') => {
                 // Go to parent directory
                 if let Some(parent) = self.current_dir.parent() {
@@ -356,17 +365,17 @@ impl FileBrowser {
             _ => Ok(None),
         }
     }
-    
+
     pub fn format_size(size: u64) -> String {
         const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
         let mut size = size as f64;
         let mut unit_index = 0;
-        
+
         while size >= 1024.0 && unit_index < UNITS.len() - 1 {
             size /= 1024.0;
             unit_index += 1;
         }
-        
+
         if unit_index == 0 {
             format!("{} {}", size as u64, UNITS[unit_index])
         } else {

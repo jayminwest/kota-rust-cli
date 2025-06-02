@@ -1,4 +1,3 @@
-
 #[derive(Clone)]
 pub enum InputMode {
     Normal,
@@ -25,9 +24,9 @@ pub enum AppMessage {
 #[derive(Clone)]
 pub enum MessageContent {
     Text(String),
-    CollapsedPaste { 
-        summary: String,  // e.g., "[Pasted 150 lines]"
-        full_content: String,  // The actual pasted content
+    CollapsedPaste {
+        summary: String,      // e.g., "[Pasted 150 lines]"
+        full_content: String, // The actual pasted content
     },
 }
 

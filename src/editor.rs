@@ -1,12 +1,12 @@
+use crate::input;
+use crate::llm;
+use crate::sr_parser::SearchReplaceBlock;
+use crate::thinking;
+use anyhow::Result;
+use colored::*;
 use std::fs;
 use std::io::{self, Write};
 use std::process::Command;
-use anyhow::Result;
-use colored::*;
-use crate::sr_parser::SearchReplaceBlock;
-use crate::llm;
-use crate::input;
-use crate::thinking;
 
 pub fn apply_sr_block(block: &SearchReplaceBlock) -> Result<()> {
     // Read the file content
@@ -15,10 +15,13 @@ pub fn apply_sr_block(block: &SearchReplaceBlock) -> Result<()> {
 
     // Try to replace the search content with replace content (only first occurrence)
     let new_content = content.replacen(&block.search_lines, &block.replace_lines, 1);
-    
+
     // Check if any replacement was made
     if new_content == content {
-        return Err(anyhow::anyhow!("Search content not found in file '{}'", block.file_path));
+        return Err(anyhow::anyhow!(
+            "Search content not found in file '{}'",
+            block.file_path
+        ));
     }
 
     // Write the modified content back to the file
@@ -32,7 +35,7 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
     println!();
     println!("{}", "─".repeat(60).dimmed());
     println!("{}", "Creating commit...".bright_yellow());
-    
+
     // Stage the modified files
     for file in modified_files {
         let output = Command::new("git")
@@ -40,39 +43,39 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
             .arg(file)
             .output()
             .map_err(|e| anyhow::anyhow!("Failed to stage file '{}': {}", file, e))?;
-        
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow::anyhow!("Git add failed for '{}': {}", file, stderr));
         }
     }
-    
+
     // Get the git diff of staged changes
     let diff_output = Command::new("git")
         .arg("diff")
         .arg("--cached")
         .output()
         .map_err(|e| anyhow::anyhow!("Failed to get git diff: {}", e))?;
-    
+
     if !diff_output.status.success() {
         let stderr = String::from_utf8_lossy(&diff_output.stderr);
         return Err(anyhow::anyhow!("Git diff failed: {}", stderr));
     }
-    
+
     let git_diff = String::from_utf8_lossy(&diff_output.stdout);
-    
+
     if git_diff.trim().is_empty() {
         println!("Warning: No changes to commit (files may not have been modified)");
         return Ok(false);
     }
-    
+
     // Generate commit message using LLM
     let commit_thinking = thinking::show_generating_commit();
     match llm::generate_commit_message(original_prompt, &git_diff).await {
         Ok(commit_message) => {
             commit_thinking.finish();
             println!("Generated commit message: \"{}\"", commit_message);
-            
+
             // Create the commit
             let commit_output = Command::new("git")
                 .arg("commit")
@@ -80,14 +83,14 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
                 .arg(&commit_message)
                 .output()
                 .map_err(|e| anyhow::anyhow!("Failed to create commit: {}", e))?;
-            
+
             if commit_output.status.success() {
                 println!("Commit created successfully!");
                 // Check if this is a self-modifying commit
                 let is_self_modifying = modified_files.iter().any(|f| {
-                    f.starts_with("src/") && f.ends_with(".rs") || 
-                    f == "prompts.toml" ||
-                    f == "Cargo.toml"
+                    f.starts_with("src/") && f.ends_with(".rs")
+                        || f == "prompts.toml"
+                        || f == "Cargo.toml"
                 });
                 Ok(is_self_modifying)
             } else {
@@ -99,7 +102,7 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
             commit_thinking.finish();
             println!("Warning: Failed to generate commit message: {}", e);
             println!("Creating commit with default message...");
-            
+
             // Fallback to a simple commit message
             let fallback_message = format!("Auto-commit: {}", original_prompt);
             let commit_output = Command::new("git")
@@ -108,14 +111,14 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
                 .arg(&fallback_message)
                 .output()
                 .map_err(|e| anyhow::anyhow!("Failed to create fallback commit: {}", e))?;
-            
+
             if commit_output.status.success() {
                 println!("Fallback commit created successfully!");
                 // Check if this is a self-modifying commit
                 let is_self_modifying = modified_files.iter().any(|f| {
-                    f.starts_with("src/") && f.ends_with(".rs") || 
-                    f == "prompts.toml" ||
-                    f == "Cargo.toml"
+                    f.starts_with("src/") && f.ends_with(".rs")
+                        || f == "prompts.toml"
+                        || f == "Cargo.toml"
                 });
                 Ok(is_self_modifying)
             } else {
@@ -126,7 +129,11 @@ async fn create_auto_commit(original_prompt: &str, modified_files: &[String]) ->
     }
 }
 
-pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_prompt: &str, context_manager: &crate::context::ContextManager) -> Result<()> {
+pub async fn confirm_and_apply_blocks(
+    blocks: Vec<SearchReplaceBlock>,
+    original_prompt: &str,
+    context_manager: &crate::context::ContextManager,
+) -> Result<()> {
     if blocks.is_empty() {
         return Ok(());
     }
@@ -142,65 +149,78 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
         if quit_applying {
             break;
         }
-        
+
         // Check if the file is in context
         let file_in_context = context_manager.is_file_in_context(&block.file_path);
-        
+
         println!();
-        let warning = if !file_in_context { " (NOT IN CONTEXT - BLOCKED)".red().bold() } else { "".normal() };
+        let warning = if !file_in_context {
+            " (NOT IN CONTEXT - BLOCKED)".red().bold()
+        } else {
+            "".normal()
+        };
         println!("{}{}", block.file_path.bright_white().bold(), warning);
         println!("{}", "─".repeat(40).dimmed());
-        
+
         // Display search content
         println!("{}", "Search:".dimmed());
         for line in block.search_lines.lines() {
             println!("  {}", line.red());
         }
-        
+
         println!("{}", "Replace:".dimmed());
         for line in block.replace_lines.lines() {
             println!("  {}", line.green());
         }
-        
+
         println!("{}", "─".repeat(40).dimmed());
-        
+
         // Block edits to files not in context
         if !file_in_context {
-            println!("{}", "❌ BLOCKED: Cannot edit file not in context!".red().bold());
+            println!(
+                "{}",
+                "❌ BLOCKED: Cannot edit file not in context!".red().bold()
+            );
             println!("{}", "To edit this file, first run:".yellow());
-            println!("  {} {}", "/add_file".bright_cyan(), block.file_path.bright_white());
+            println!(
+                "  {} {}",
+                "/add_file".bright_cyan(),
+                block.file_path.bright_white()
+            );
             println!("{} {}", "Skipped:".red(), block.file_path);
             continue;
         }
-        
+
         // Get user confirmation unless apply_all is set
         let should_apply = if apply_all {
             true
         } else {
             loop {
                 // No need for warning since we already block files not in context
-                
+
                 print!("{} ", "Apply? (y/n/a/q):".bright_white());
                 io::stdout().flush()?;
-                
+
                 let choice = match input::read_single_char() {
                     Ok(c) => c.to_lowercase().to_string(),
                     Err(_) => continue,
                 };
-                
+
                 match choice.as_str() {
                     "y" | "yes" => break true,
                     "n" | "no" => break false,
                     "a" | "apply_all" => {
                         apply_all = true;
                         break true;
-                    },
+                    }
                     "q" | "quit" => {
                         quit_applying = true;
                         break false;
-                    },
+                    }
                     _ => {
-                        println!("Please enter 'y' (yes), 'n' (no), 'a' (apply all), or 'q' (quit)");
+                        println!(
+                            "Please enter 'y' (yes), 'n' (no), 'a' (apply all), or 'q' (quit)"
+                        );
                         continue;
                     }
                 }
@@ -223,12 +243,14 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
     }
 
     if quit_applying && blocks.len() > 1 {
-        println!("\nWarning: Stopped applying changes (remaining {} changes were skipped)", 
-                 blocks.len() - blocks.iter().position(|_| quit_applying).unwrap_or(0));
+        println!(
+            "\nWarning: Stopped applying changes (remaining {} changes were skipped)",
+            blocks.len() - blocks.iter().position(|_| quit_applying).unwrap_or(0)
+        );
     }
 
     println!("\nFile editing session complete.");
-    
+
     // Create automatic commit if any files were modified
     if !applied_files.is_empty() {
         match create_auto_commit(original_prompt, &applied_files).await {
@@ -248,7 +270,7 @@ pub async fn confirm_and_apply_blocks(blocks: Vec<SearchReplaceBlock>, original_
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -271,7 +293,7 @@ mod tests {
         };
 
         assert!(apply_sr_block(&block).is_ok());
-        
+
         let new_content = fs::read_to_string(temp_file.path()).unwrap();
         assert_eq!(new_content, "line1\nnew content\nline3");
     }
@@ -304,7 +326,7 @@ mod tests {
         };
 
         assert!(apply_sr_block(&block).is_ok());
-        
+
         let new_content = fs::read_to_string(temp_file.path()).unwrap();
         // Should only replace first occurrence
         assert_eq!(new_content, "replaced\nline2\nduplicate\nline4");
@@ -323,7 +345,7 @@ mod tests {
         };
 
         assert!(apply_sr_block(&block).is_ok());
-        
+
         let new_content = fs::read_to_string(temp_file.path()).unwrap();
         // Empty search should insert at beginning
         assert_eq!(new_content, "insertedline1\nline2\nline3");
@@ -342,7 +364,7 @@ mod tests {
         };
 
         assert!(apply_sr_block(&block).is_ok());
-        
+
         let new_content = fs::read_to_string(temp_file.path()).unwrap();
         // Should delete the content
         assert_eq!(new_content, "line1\n\nline3");
@@ -361,9 +383,12 @@ mod tests {
         };
 
         assert!(apply_sr_block(&block).is_ok());
-        
+
         let new_content = fs::read_to_string(temp_file.path()).unwrap();
-        assert_eq!(new_content, "line1\nnew line 1\nnew line 2\nnew line 3\nline4");
+        assert_eq!(
+            new_content,
+            "line1\nnew line 1\nnew line 2\nnew line 3\nline4"
+        );
     }
 
     #[test]
@@ -376,7 +401,10 @@ mod tests {
 
         let result = apply_sr_block(&block);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Failed to read file"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to read file"));
     }
 
     #[test]
@@ -392,7 +420,7 @@ mod tests {
         };
 
         assert!(apply_sr_block(&block).is_ok());
-        
+
         let new_content = fs::read_to_string(temp_file.path()).unwrap();
         assert!(new_content.contains(r#"r"^.*\w+.*$""#));
     }
@@ -410,7 +438,7 @@ mod tests {
         };
 
         assert!(apply_sr_block(&block).is_ok());
-        
+
         let new_content = fs::read_to_string(temp_file.path()).unwrap();
         assert!(new_content.contains("function new()"));
         assert!(new_content.contains("return \"new\""));
@@ -430,7 +458,7 @@ mod tests {
         };
 
         assert!(apply_sr_block(&block).is_ok());
-        
+
         let new_content = fs::read_to_string(temp_file.path()).unwrap();
         // "some content" gets replaced with "new content", leaving "here"
         assert_eq!(new_content, "line1\nnew content here\nline3");
@@ -452,7 +480,7 @@ mod tests {
         let result = apply_sr_block(&block);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not found"));
-        
+
         // Verify file wasn't changed
         let unchanged_content = fs::read_to_string(temp_file.path()).unwrap();
         assert_eq!(unchanged_content, "line1\nsome content here\nline3");

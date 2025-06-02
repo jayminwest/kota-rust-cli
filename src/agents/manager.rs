@@ -79,8 +79,8 @@ impl AgentManager {
         Ok(())
     }
 
-    pub async fn list_agents(&self) -> Vec<(String, String)> {
-        let agents = self.agents.lock().await;
+    pub fn list_agents(&self) -> Vec<(String, String)> {
+        let agents = self.agents.blocking_lock();
         let mut agent_list = Vec::new();
 
         for (name, agent) in agents.iter() {
@@ -90,12 +90,16 @@ impl AgentManager {
         agent_list
     }
 
-    pub async fn get_agent_capabilities(&self, agent_name: &str) -> Option<Vec<AgentCapability>> {
-        let agents = self.agents.lock().await;
+    pub fn get_agent_capabilities(&self, agent_name: &str) -> Option<Vec<AgentCapability>> {
+        let agents = self.agents.blocking_lock();
         agents.get(agent_name).map(|agent| agent.capabilities())
     }
 
-    pub async fn delegate_task(&self, task_description: String, agent_name: Option<String>) -> Result<String> {
+    pub async fn delegate_task(
+        &self,
+        task_description: String,
+        agent_name: Option<String>,
+    ) -> Result<String> {
         let task = AgentTask::new(task_description, super::traits::TaskPriority::Normal);
         let task_id = task.id.clone();
 
@@ -123,12 +127,20 @@ impl AgentManager {
                         if let Some(task) = active_tasks.get_mut(&id) {
                             task.update_status(status.clone());
                         }
-                        
+
                         match status {
-                            TaskStatus::Completed(msg) => Ok(format!("✓ Task completed by {}: {}", agent_name, msg)),
-                            TaskStatus::Failed(msg) => Ok(format!("✗ Task failed in {}: {}", agent_name, msg)),
-                            TaskStatus::InProgress => Ok(format!("⏳ Task started by {}", agent_name)),
-                            TaskStatus::Blocked(msg) => Ok(format!("⏸ Task blocked in {}: {}", agent_name, msg)),
+                            TaskStatus::Completed(msg) => {
+                                Ok(format!("✓ Task completed by {}: {}", agent_name, msg))
+                            }
+                            TaskStatus::Failed(msg) => {
+                                Ok(format!("✗ Task failed in {}: {}", agent_name, msg))
+                            }
+                            TaskStatus::InProgress => {
+                                Ok(format!("⏳ Task started by {}", agent_name))
+                            }
+                            TaskStatus::Blocked(msg) => {
+                                Ok(format!("⏸ Task blocked in {}: {}", agent_name, msg))
+                            }
                             TaskStatus::Pending => Ok(format!("📋 Task queued for {}", agent_name)),
                         }
                     }
@@ -155,7 +167,9 @@ impl AgentManager {
             let message = AgentMessage::QueryRequest(query.clone());
             if let Some(response) = agent.process_message(message).await? {
                 match response {
-                    AgentMessage::QueryResponse(_, answer) => Ok(format!("**{}:** {}", agent_name, answer)),
+                    AgentMessage::QueryResponse(_, answer) => {
+                        Ok(format!("**{}:** {}", agent_name, answer))
+                    }
                     _ => Ok(format!("Agent {} is processing your query", agent_name)),
                 }
             } else {
@@ -170,20 +184,34 @@ impl AgentManager {
         let text = task_or_query.to_lowercase();
 
         // Code-related keywords
-        if text.contains("code") || text.contains("implement") || text.contains("function") 
-            || text.contains("refactor") || text.contains("test") || text.contains("debug") {
+        if text.contains("code")
+            || text.contains("implement")
+            || text.contains("function")
+            || text.contains("refactor")
+            || text.contains("test")
+            || text.contains("debug")
+        {
             return Ok("code".to_string());
         }
 
         // Planning-related keywords
-        if text.contains("plan") || text.contains("strategy") || text.contains("approach") 
-            || text.contains("organize") || text.contains("structure") {
+        if text.contains("plan")
+            || text.contains("strategy")
+            || text.contains("approach")
+            || text.contains("organize")
+            || text.contains("structure")
+        {
             return Ok("planning".to_string());
         }
 
         // Research-related keywords
-        if text.contains("research") || text.contains("investigate") || text.contains("find") 
-            || text.contains("learn") || text.contains("explain") || text.contains("what") {
+        if text.contains("research")
+            || text.contains("investigate")
+            || text.contains("find")
+            || text.contains("learn")
+            || text.contains("explain")
+            || text.contains("what")
+        {
             return Ok("research".to_string());
         }
 

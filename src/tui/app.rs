@@ -1,19 +1,21 @@
-use std::sync::{Arc, Mutex};
 use anyhow::Result;
 use chrono::Local;
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tokio::task;
 
+use crate::cmd_parser;
 use crate::context::ContextManager;
-use crate::llm::{self, LlmProvider, ModelConfig};
-use crate::file_browser::FileBrowser;
 use crate::dynamic_prompts::DynamicPromptData;
+use crate::editor;
+use crate::file_browser::FileBrowser;
+use crate::llm::{self, LlmProvider, ModelConfig};
 use crate::memory::MemoryManager;
 use crate::sr_parser;
-use crate::editor;
-use crate::cmd_parser;
 
-use super::types::{InputMode, FocusedPane, AppMessage, MessageContent, CommandStatus, CommandSuggestion};
+use super::types::{
+    AppMessage, CommandStatus, CommandSuggestion, FocusedPane, InputMode, MessageContent,
+};
 
 // Threshold for collapsing pasted content
 const PASTE_COLLAPSE_THRESHOLD: usize = 10;
@@ -31,35 +33,35 @@ pub struct App {
     pub scroll_offset: u16,
     pub auto_scroll_enabled: bool,
     pub focused_pane: FocusedPane,
-    
+
     // Core components
     pub context_manager: Arc<Mutex<ContextManager>>,
     pub model_config: ModelConfig,
     pub memory_manager: MemoryManager,
-    
+
     // Terminal output buffer
     pub terminal_output: Vec<String>,
     pub terminal_scroll: u16,
     pub suggested_commands: Vec<CommandSuggestion>,
     pub selected_command_index: usize,
-    
+
     // File browser
     pub file_browser: FileBrowser,
     pub show_file_browser: bool,
-    
+
     // Live data
     pub live_data: DynamicPromptData,
-    
+
     // Message channel
     pub tx: mpsc::UnboundedSender<AppMessage>,
     pub rx: Option<mpsc::UnboundedReceiver<AppMessage>>,
-    
+
     // Processing state
     pub is_processing: bool,
-    
+
     // Context scroll
     pub context_scroll: u16,
-    
+
     // Application state
     pub should_quit: bool,
 }
@@ -70,7 +72,7 @@ impl App {
         let file_browser = FileBrowser::new()?;
         let memory_manager = MemoryManager::new()?;
         let (tx, rx) = mpsc::unbounded_channel();
-        
+
         Ok(Self {
             input: String::new(),
             input_lines: vec![String::new()],
@@ -100,11 +102,11 @@ impl App {
             should_quit: false,
         })
     }
-    
+
     pub fn update_time(&mut self) {
         self.current_time = Local::now().format("%H:%M:%S").to_string();
     }
-    
+
     pub fn update_context_view(&mut self) {
         if let Ok(cm) = self.context_manager.lock() {
             self.context_view = cm.get_formatted_context();
@@ -112,7 +114,7 @@ impl App {
             self.live_data = DynamicPromptData::new(&cm);
         }
     }
-    
+
     pub fn add_terminal_output(&mut self, output: String) {
         self.terminal_output.push(output);
         // Keep only last 1000 lines
@@ -120,25 +122,32 @@ impl App {
             self.terminal_output.remove(0);
         }
     }
-    
+
     pub fn auto_scroll_to_bottom(&mut self) {
         if self.auto_scroll_enabled {
             // Calculate proper scroll position to show latest content
             let message_count = self.messages.len() as u16;
-            if message_count > 10 { // Assuming roughly 10 messages fit on screen
+            if message_count > 10 {
+                // Assuming roughly 10 messages fit on screen
                 self.scroll_offset = message_count.saturating_sub(10);
             } else {
                 self.scroll_offset = 0;
             }
         }
     }
-    
+
     pub fn toggle_auto_scroll(&mut self) {
         self.auto_scroll_enabled = !self.auto_scroll_enabled;
-        self.status_message = format!("Auto-scroll: {}", 
-            if self.auto_scroll_enabled { "ON" } else { "OFF" });
+        self.status_message = format!(
+            "Auto-scroll: {}",
+            if self.auto_scroll_enabled {
+                "ON"
+            } else {
+                "OFF"
+            }
+        );
     }
-    
+
     pub fn get_full_input(&self) -> String {
         if self.input_lines.len() == 1 {
             self.input.clone()
@@ -151,17 +160,17 @@ impl App {
             lines.join("\n")
         }
     }
-    
+
     pub fn clear_input(&mut self) {
         self.input.clear();
         self.input_lines = vec![String::new()];
         self.current_line = 0;
     }
-    
+
     pub fn is_multi_line_input(&self) -> bool {
         self.input_lines.len() > 1 || self.input.contains('\n')
     }
-    
+
     pub fn add_new_line(&mut self) {
         // Convert single line to multi-line if needed
         if self.input_lines.len() == 1 && !self.input.is_empty() {
@@ -172,12 +181,12 @@ impl App {
                 self.input_lines[self.current_line] = self.input.clone();
             }
         }
-        
+
         self.input_lines.push(String::new());
         self.current_line = self.input_lines.len() - 1;
         self.input.clear(); // Clear the working input
     }
-    
+
     pub fn should_auto_continue(&self) -> bool {
         let empty_string = String::new();
         let content = if self.input_lines.len() == 1 {
@@ -185,7 +194,7 @@ impl App {
         } else {
             self.input_lines.last().unwrap_or(&empty_string)
         };
-        
+
         // Check for multi-line triggers (similar to input.rs logic)
         content.ends_with('\\') ||           // Line continuation
         content.ends_with(':') ||            // Python-style blocks
@@ -193,20 +202,20 @@ impl App {
         content.starts_with("```") ||        // Code blocks
         self.has_unmatched_delimiters(content)
     }
-    
+
     pub fn has_unmatched_delimiters(&self, content: &str) -> bool {
         let mut parens = 0;
         let mut brackets = 0;
         let mut braces = 0;
         let mut in_string = false;
         let mut escape_next = false;
-        
+
         for ch in content.chars() {
             if escape_next {
                 escape_next = false;
                 continue;
             }
-            
+
             match ch {
                 '\\' => escape_next = true,
                 '"' | '\'' if !in_string => in_string = true,
@@ -220,10 +229,10 @@ impl App {
                 _ => {}
             }
         }
-        
+
         parens > 0 || brackets > 0 || braces > 0 || in_string
     }
-    
+
     pub fn add_suggested_command(&mut self, command: String) {
         let suggestion = CommandSuggestion {
             command: command.clone(),
@@ -234,12 +243,12 @@ impl App {
         self.suggested_commands.push(suggestion);
         self.add_terminal_output(format!("[SUGGESTED] {}", command));
     }
-    
+
     pub fn navigate_commands(&mut self, direction: i32) {
         if self.suggested_commands.is_empty() {
             return;
         }
-        
+
         let len = self.suggested_commands.len();
         match direction.cmp(&0) {
             std::cmp::Ordering::Greater => {
@@ -257,21 +266,23 @@ impl App {
             }
         }
     }
-    
+
     pub fn execute_selected_command(&mut self) -> Option<String> {
         if self.selected_command_index < self.suggested_commands.len() {
-            let command = self.suggested_commands[self.selected_command_index].command.clone();
+            let command = self.suggested_commands[self.selected_command_index]
+                .command
+                .clone();
             self.suggested_commands[self.selected_command_index].status = CommandStatus::Running;
             Some(command)
         } else {
             None
         }
     }
-    
+
     pub async fn execute_selected_command_async(&mut self) {
         if let Some(command) = self.execute_selected_command() {
             self.add_terminal_output(format!("[EXEC] {}", command));
-            
+
             // Execute the command using tokio process
             match tokio::process::Command::new("sh")
                 .arg("-c")
@@ -282,7 +293,7 @@ impl App {
                 Ok(output) => {
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    
+
                     if output.status.success() {
                         if !stdout.trim().is_empty() {
                             for line in stdout.lines() {
@@ -290,27 +301,35 @@ impl App {
                             }
                         }
                         self.add_terminal_output("[SUCCESS] Command completed".to_string());
-                        
+
                         // Update command status
                         if self.selected_command_index < self.suggested_commands.len() {
-                            self.suggested_commands[self.selected_command_index].status = CommandStatus::Success;
-                            self.suggested_commands[self.selected_command_index].output = Some(stdout.to_string());
+                            self.suggested_commands[self.selected_command_index].status =
+                                CommandStatus::Success;
+                            self.suggested_commands[self.selected_command_index].output =
+                                Some(stdout.to_string());
                         }
                     } else {
-                        self.add_terminal_output(format!("[ERROR] Command failed with code: {}", 
-                            output.status.code().unwrap_or(-1)));
+                        self.add_terminal_output(format!(
+                            "[ERROR] Command failed with code: {}",
+                            output.status.code().unwrap_or(-1)
+                        ));
                         if !stderr.trim().is_empty() {
                             for line in stderr.lines() {
                                 self.add_terminal_output(format!("  {}", line));
                             }
                         }
-                        
+
                         // Update command status and show error details
                         if self.selected_command_index < self.suggested_commands.len() {
                             let error_msg = stderr.to_string();
-                            self.suggested_commands[self.selected_command_index].status = CommandStatus::Failed(error_msg.clone());
+                            self.suggested_commands[self.selected_command_index].status =
+                                CommandStatus::Failed(error_msg.clone());
                             // Log the error for debugging
-                            self.add_terminal_output(format!("[DEBUG] Error details: {}", error_msg));
+                            self.add_terminal_output(format!(
+                                "[DEBUG] Error details: {}",
+                                error_msg
+                            ));
                         }
                     }
                 }
@@ -318,7 +337,8 @@ impl App {
                     let error_msg = format!("Execution error: {}", e);
                     self.add_terminal_output(format!("[ERROR] Failed to execute: {}", e));
                     if self.selected_command_index < self.suggested_commands.len() {
-                        self.suggested_commands[self.selected_command_index].status = CommandStatus::Failed(error_msg);
+                        self.suggested_commands[self.selected_command_index].status =
+                            CommandStatus::Failed(error_msg);
                     }
                 }
             }
@@ -326,7 +346,7 @@ impl App {
             self.add_terminal_output("No command selected".to_string());
         }
     }
-    
+
     pub fn add_file_to_context(&mut self, path: &str) -> Result<()> {
         if let Ok(mut cm) = self.context_manager.lock() {
             cm.add_file(path)?;
@@ -335,7 +355,7 @@ impl App {
         self.status_message = format!("Added {} to context", path);
         Ok(())
     }
-    
+
     pub async fn process_user_input(&mut self, input: String) {
         // Use the full input (could be multi-line)
         let full_input = if input.is_empty() {
@@ -343,7 +363,7 @@ impl App {
         } else {
             input
         };
-        
+
         // Check if this is a command (starts with / or :)
         let trimmed = full_input.trim();
         if trimmed.starts_with('/') || trimmed.starts_with(':') {
@@ -356,7 +376,7 @@ impl App {
             self.process_command(cmd.to_string()).await;
             return;
         }
-        
+
         // Check if this is a large paste
         let line_count = full_input.lines().count();
         let message_content = if line_count > PASTE_COLLAPSE_THRESHOLD {
@@ -367,12 +387,13 @@ impl App {
         } else {
             MessageContent::Text(full_input.clone())
         };
-        
-        self.messages.push(("User".to_string(), message_content.clone()));
-        
+
+        self.messages
+            .push(("User".to_string(), message_content.clone()));
+
         // Auto-scroll to bottom when new message is added
         self.auto_scroll_to_bottom();
-        
+
         // Display in terminal
         match &message_content {
             MessageContent::Text(text) => {
@@ -382,36 +403,39 @@ impl App {
                 self.add_terminal_output(format!(">>> {}", summary));
             }
         }
-        
+
         self.is_processing = true;
         self.status_message = "Processing LLM request... (UI remains interactive)".to_string();
-        
+
         // Get current context
         let context = if let Ok(cm) = self.context_manager.lock() {
             cm.get_formatted_context()
         } else {
             String::new()
         };
-        
+
         // Extract the actual content for LLM
         let actual_content = match &message_content {
             MessageContent::Text(text) => text.clone(),
             MessageContent::CollapsedPaste { full_content, .. } => full_content.clone(),
         };
-        
+
         // Store conversation in memory
-        if let Err(e) = self.memory_manager.store_conversation_summary(&format!("User: {}", full_input)) {
+        if let Err(e) = self
+            .memory_manager
+            .store_conversation_summary(&format!("User: {}", full_input))
+        {
             eprintln!("Warning: Failed to store user message in memory: {}", e);
         }
-        
+
         // Clear the input after processing
         self.clear_input();
-        
+
         // Spawn async LLM task
         let tx = self.tx.clone();
         let model_config = self.model_config.clone();
         let prompt = actual_content;
-        
+
         task::spawn(async move {
             match llm::ask_model_with_config(&prompt, &context, &model_config).await {
                 Ok(response) => {
@@ -424,10 +448,10 @@ impl App {
             let _ = tx.send(AppMessage::ProcessingComplete);
         });
     }
-    
+
     pub async fn process_command(&mut self, cmd: String) {
         self.status_message = format!("Executing command: {}", cmd);
-        
+
         // Handle vim-style commands first
         match cmd.trim() {
             "q" | "quit" => {
@@ -440,7 +464,9 @@ impl App {
                 if let Ok(cm) = self.context_manager.lock() {
                     let context = cm.get_formatted_context();
                     match std::fs::write("kota_context.txt", context) {
-                        Ok(_) => self.status_message = "Context saved to kota_context.txt".to_string(),
+                        Ok(_) => {
+                            self.status_message = "Context saved to kota_context.txt".to_string()
+                        }
                         Err(e) => self.status_message = format!("Error saving context: {}", e),
                     }
                 } else {
@@ -462,7 +488,9 @@ impl App {
                 self.add_terminal_output("  :q, :quit         - Exit KOTA".to_string());
                 self.add_terminal_output("  :w, :write        - Save context to file".to_string());
                 self.add_terminal_output("  :wq               - Save and quit".to_string());
-                self.add_terminal_output("  :e <file>         - Edit/add file to context".to_string());
+                self.add_terminal_output(
+                    "  :e <file>         - Edit/add file to context".to_string(),
+                );
                 self.add_terminal_output("  :h, :help         - Show this help".to_string());
                 self.add_terminal_output("".to_string());
                 self.add_terminal_output("Navigation:".to_string());
@@ -470,9 +498,15 @@ impl App {
                 self.add_terminal_output("  Insert mode: Esc to return to Normal".to_string());
                 self.add_terminal_output("".to_string());
                 self.add_terminal_output("File Commands:".to_string());
-                self.add_terminal_output("  :e <file>         - Edit/add file to context".to_string());
-                self.add_terminal_output("  :add <file>       - Add file to context (alias for :e)".to_string());
-                self.add_terminal_output("  :context          - Display current context".to_string());
+                self.add_terminal_output(
+                    "  :e <file>         - Edit/add file to context".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :add <file>       - Add file to context (alias for :e)".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :context          - Display current context".to_string(),
+                );
                 self.add_terminal_output("  :clear            - Clear all context".to_string());
                 self.add_terminal_output("  :provider <name>  - Switch LLM provider".to_string());
                 self.add_terminal_output("  :model <name>     - Set model".to_string());
@@ -480,29 +514,53 @@ impl App {
                 self.add_terminal_output("Memory Commands:".to_string());
                 self.add_terminal_output("  :memory           - Show recent memories".to_string());
                 self.add_terminal_output("  :search <query>   - Search knowledge base".to_string());
-                self.add_terminal_output("  :learn <topic>: <content> - Store learning".to_string());
+                self.add_terminal_output(
+                    "  :learn <topic>: <content> - Store learning".to_string(),
+                );
                 self.add_terminal_output("".to_string());
                 self.add_terminal_output("Agent Commands:".to_string());
-                self.add_terminal_output("  :agents           - List all available agents".to_string());
-                self.add_terminal_output("  :agent <name>     - Get details about specific agent".to_string());
-                self.add_terminal_output("  :delegate <task>  - Delegate task to best agent".to_string());
-                self.add_terminal_output("  :ask_agent <question> - Ask question to agent".to_string());
+                self.add_terminal_output(
+                    "  :agents           - List all available agents".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :agent <name>     - Get details about specific agent".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :delegate <task>  - Delegate task to best agent".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :ask_agent <question> - Ask question to agent".to_string(),
+                );
                 self.add_terminal_output("".to_string());
                 self.add_terminal_output("Security Commands:".to_string());
-                self.add_terminal_output("  :security [status] - Show security system status".to_string());
-                self.add_terminal_output("  :sandbox [profile] - Configure sandbox profiles".to_string());
-                self.add_terminal_output("  :approval [mode]   - Configure approval settings".to_string());
+                self.add_terminal_output(
+                    "  :security [status] - Show security system status".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :sandbox [profile] - Configure sandbox profiles".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :approval [mode]   - Configure approval settings".to_string(),
+                );
                 self.add_terminal_output("".to_string());
                 self.add_terminal_output("Configuration Commands:".to_string());
-                self.add_terminal_output("  :config [show]    - Show current configuration".to_string());
-                self.add_terminal_output("  :config save      - Save configuration to file".to_string());
-                self.add_terminal_output("  :config load      - Load configuration from file".to_string());
-                self.add_terminal_output("  :config reset     - Reset to default configuration".to_string());
+                self.add_terminal_output(
+                    "  :config [show]    - Show current configuration".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :config save      - Save configuration to file".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :config load      - Load configuration from file".to_string(),
+                );
+                self.add_terminal_output(
+                    "  :config reset     - Reset to default configuration".to_string(),
+                );
                 return;
             }
             _ => {} // Continue to handle other commands
         }
-        
+
         // Handle vim-style edit command
         if cmd.starts_with("e ") {
             let path = cmd.strip_prefix("e ").unwrap_or("");
@@ -511,7 +569,7 @@ impl App {
             }
             return;
         }
-        
+
         // Handle file commands
         if cmd.starts_with("add ") {
             let path = cmd.strip_prefix("add ").unwrap_or("");
@@ -553,13 +611,15 @@ impl App {
                     self.status_message = "Switched to Anthropic Claude".to_string();
                 }
                 _ => {
-                    self.status_message = "Unknown provider. Use 'ollama', 'gemini', or 'anthropic'".to_string();
+                    self.status_message =
+                        "Unknown provider. Use 'ollama', 'gemini', or 'anthropic'".to_string();
                 }
             }
         } else if cmd.starts_with("model ") {
             let model = cmd.strip_prefix("model ").unwrap_or("");
             if model.is_empty() {
-                self.status_message = format!("Current model: {}", self.model_config.display_name());
+                self.status_message =
+                    format!("Current model: {}", self.model_config.display_name());
             } else {
                 self.model_config.model_name = Some(model.to_string());
                 self.status_message = format!("Model set to: {}", self.model_config.display_name());
@@ -623,17 +683,25 @@ impl App {
             } else {
                 self.status_message = "Usage: learn <topic>: <content>".to_string();
             }
-        
+
         // Agent Commands
         } else if cmd == "agents" {
             self.add_terminal_output("=== Available Agents ===".to_string());
             self.add_terminal_output("🤖 code_agent - Code analysis and editing".to_string());
             self.add_terminal_output("🤖 planning_agent - Task planning and breakdown".to_string());
-            self.add_terminal_output("🤖 research_agent - Information gathering and analysis".to_string());
+            self.add_terminal_output(
+                "🤖 research_agent - Information gathering and analysis".to_string(),
+            );
             self.add_terminal_output("".to_string());
-            self.add_terminal_output("Use ':agent <name>' to get details about a specific agent".to_string());
-            self.add_terminal_output("Use ':delegate <task>' to delegate a task to the best agent".to_string());
-            self.add_terminal_output("Use ':ask_agent <question>' to ask a question to an agent".to_string());
+            self.add_terminal_output(
+                "Use ':agent <name>' to get details about a specific agent".to_string(),
+            );
+            self.add_terminal_output(
+                "Use ':delegate <task>' to delegate a task to the best agent".to_string(),
+            );
+            self.add_terminal_output(
+                "Use ':ask_agent <question>' to ask a question to an agent".to_string(),
+            );
         } else if cmd.starts_with("agent ") {
             let agent_name = cmd.strip_prefix("agent ").unwrap_or("");
             if !agent_name.is_empty() {
@@ -641,27 +709,48 @@ impl App {
                     "code_agent" => {
                         self.add_terminal_output("Agent: code_agent".to_string());
                         self.add_terminal_output("Capabilities:".to_string());
-                        self.add_terminal_output("  • CodeAnalysis - Analyze code structure and patterns".to_string());
-                        self.add_terminal_output("  • CodeGeneration - Generate new code".to_string());
-                        self.add_terminal_output("  • CodeEditing - Edit and refactor existing code".to_string());
+                        self.add_terminal_output(
+                            "  • CodeAnalysis - Analyze code structure and patterns".to_string(),
+                        );
+                        self.add_terminal_output(
+                            "  • CodeGeneration - Generate new code".to_string(),
+                        );
+                        self.add_terminal_output(
+                            "  • CodeEditing - Edit and refactor existing code".to_string(),
+                        );
                     }
                     "planning_agent" => {
                         self.add_terminal_output("Agent: planning_agent".to_string());
                         self.add_terminal_output("Capabilities:".to_string());
-                        self.add_terminal_output("  • TaskPlanning - Break down complex tasks".to_string());
-                        self.add_terminal_output("  • ProjectPlanning - Plan software projects".to_string());
-                        self.add_terminal_output("  • ResourcePlanning - Plan resource allocation".to_string());
+                        self.add_terminal_output(
+                            "  • TaskPlanning - Break down complex tasks".to_string(),
+                        );
+                        self.add_terminal_output(
+                            "  • ProjectPlanning - Plan software projects".to_string(),
+                        );
+                        self.add_terminal_output(
+                            "  • ResourcePlanning - Plan resource allocation".to_string(),
+                        );
                     }
                     "research_agent" => {
                         self.add_terminal_output("Agent: research_agent".to_string());
                         self.add_terminal_output("Capabilities:".to_string());
-                        self.add_terminal_output("  • WebSearch - Search the internet for information".to_string());
-                        self.add_terminal_output("  • DataAnalysis - Analyze data and information".to_string());
-                        self.add_terminal_output("  • InformationGathering - Gather relevant information".to_string());
+                        self.add_terminal_output(
+                            "  • WebSearch - Search the internet for information".to_string(),
+                        );
+                        self.add_terminal_output(
+                            "  • DataAnalysis - Analyze data and information".to_string(),
+                        );
+                        self.add_terminal_output(
+                            "  • InformationGathering - Gather relevant information".to_string(),
+                        );
                     }
                     _ => {
                         self.add_terminal_output(format!("Agent '{}' not found", agent_name));
-                        self.add_terminal_output("Available agents: code_agent, planning_agent, research_agent".to_string());
+                        self.add_terminal_output(
+                            "Available agents: code_agent, planning_agent, research_agent"
+                                .to_string(),
+                        );
                     }
                 }
             } else {
@@ -673,18 +762,33 @@ impl App {
                 self.add_terminal_output(format!("Delegating task: {}", task));
                 self.add_terminal_output("Analyzing task to select best agent...".to_string());
                 // Simulate agent selection logic
-                let selected_agent = if task.contains("code") || task.contains("programming") || task.contains("function") {
+                let selected_agent = if task.contains("code")
+                    || task.contains("programming")
+                    || task.contains("function")
+                {
                     "code_agent"
-                } else if task.contains("plan") || task.contains("organize") || task.contains("break down") {
+                } else if task.contains("plan")
+                    || task.contains("organize")
+                    || task.contains("break down")
+                {
                     "planning_agent"
-                } else if task.contains("search") || task.contains("research") || task.contains("find") {
+                } else if task.contains("search")
+                    || task.contains("research")
+                    || task.contains("find")
+                {
                     "research_agent"
                 } else {
                     "code_agent" // default
                 };
                 self.add_terminal_output(format!("Selected agent: {}", selected_agent));
-                self.add_terminal_output(format!("Task assigned to {} for processing", selected_agent));
-                self.add_terminal_output("Note: Full agent integration requires agent manager initialization".to_string());
+                self.add_terminal_output(format!(
+                    "Task assigned to {} for processing",
+                    selected_agent
+                ));
+                self.add_terminal_output(
+                    "Note: Full agent integration requires agent manager initialization"
+                        .to_string(),
+                );
             } else {
                 self.status_message = "Usage: delegate <task_description>".to_string();
             }
@@ -693,27 +797,45 @@ impl App {
             if !question.is_empty() {
                 self.add_terminal_output(format!("Question: {}", question));
                 self.add_terminal_output("Routing question to appropriate agent...".to_string());
-                self.add_terminal_output("Note: Full agent integration requires agent manager initialization".to_string());
+                self.add_terminal_output(
+                    "Note: Full agent integration requires agent manager initialization"
+                        .to_string(),
+                );
             } else {
                 self.status_message = "Usage: ask_agent <question>".to_string();
             }
-        
-        // Security Commands  
+
+        // Security Commands
         } else if cmd == "security" || cmd.starts_with("security ") {
             let arg = cmd.strip_prefix("security ").unwrap_or("");
             match arg {
                 "" | "help" => {
                     self.add_terminal_output("=== KOTA Security System ===".to_string());
-                    self.add_terminal_output("🔒 KOTA uses a multi-layered security approach:".to_string());
+                    self.add_terminal_output(
+                        "🔒 KOTA uses a multi-layered security approach:".to_string(),
+                    );
                     self.add_terminal_output("".to_string());
-                    self.add_terminal_output("• Policy Engine: Regex-based command filtering".to_string());
-                    self.add_terminal_output("• Approval System: Interactive user confirmation with risk assessment".to_string());
-                    self.add_terminal_output("• macOS Sandboxing: Process isolation using sandbox-exec".to_string());
+                    self.add_terminal_output(
+                        "• Policy Engine: Regex-based command filtering".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "• Approval System: Interactive user confirmation with risk assessment"
+                            .to_string(),
+                    );
+                    self.add_terminal_output(
+                        "• macOS Sandboxing: Process isolation using sandbox-exec".to_string(),
+                    );
                     self.add_terminal_output("".to_string());
                     self.add_terminal_output("Available commands:".to_string());
-                    self.add_terminal_output("• :security status - Show current security configuration".to_string());
-                    self.add_terminal_output("• :sandbox [profile] - Configure sandbox profiles".to_string());
-                    self.add_terminal_output("• :approval [mode] - Configure approval settings".to_string());
+                    self.add_terminal_output(
+                        "• :security status - Show current security configuration".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "• :sandbox [profile] - Configure sandbox profiles".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "• :approval [mode] - Configure approval settings".to_string(),
+                    );
                 }
                 "status" => {
                     self.add_terminal_output("=== Security Status ===".to_string());
@@ -723,7 +845,8 @@ impl App {
                     self.add_terminal_output("🔐 Platform: macOS Seatbelt".to_string());
                 }
                 _ => {
-                    self.status_message = "Unknown security command. Use ':security help' for usage.".to_string();
+                    self.status_message =
+                        "Unknown security command. Use ':security help' for usage.".to_string();
                 }
             }
         } else if cmd == "sandbox" || cmd.starts_with("sandbox ") {
@@ -733,27 +856,43 @@ impl App {
                     self.add_terminal_output("=== Sandbox Profiles ===".to_string());
                     self.add_terminal_output("Available profiles:".to_string());
                     self.add_terminal_output("".to_string());
-                    self.add_terminal_output("🔒 minimal - Extremely restrictive, deny-by-default".to_string());
-                    self.add_terminal_output("🔒 development - Balanced for development work".to_string());
-                    self.add_terminal_output("🔒 read_only - Read-only access to current directory".to_string());
+                    self.add_terminal_output(
+                        "🔒 minimal - Extremely restrictive, deny-by-default".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "🔒 development - Balanced for development work".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "🔒 read_only - Read-only access to current directory".to_string(),
+                    );
                     self.add_terminal_output("".to_string());
                     self.add_terminal_output("Current profile: development".to_string());
-                    self.add_terminal_output("Use ':sandbox <profile>' to switch profiles".to_string());
+                    self.add_terminal_output(
+                        "Use ':sandbox <profile>' to switch profiles".to_string(),
+                    );
                 }
                 "minimal" => {
                     self.add_terminal_output("🔒 Switched to minimal sandbox profile".to_string());
                     self.add_terminal_output("Security level: Maximum restriction".to_string());
                 }
                 "development" => {
-                    self.add_terminal_output("🔒 Switched to development sandbox profile".to_string());
-                    self.add_terminal_output("Security level: Balanced for development".to_string());
+                    self.add_terminal_output(
+                        "🔒 Switched to development sandbox profile".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "Security level: Balanced for development".to_string(),
+                    );
                 }
                 "read_only" => {
-                    self.add_terminal_output("🔒 Switched to read-only sandbox profile".to_string());
+                    self.add_terminal_output(
+                        "🔒 Switched to read-only sandbox profile".to_string(),
+                    );
                     self.add_terminal_output("Security level: Read-only file access".to_string());
                 }
                 _ => {
-                    self.status_message = "Unknown sandbox profile. Use ':sandbox' to see available profiles.".to_string();
+                    self.status_message =
+                        "Unknown sandbox profile. Use ':sandbox' to see available profiles."
+                            .to_string();
                 }
             }
         } else if cmd == "approval" || cmd.starts_with("approval ") {
@@ -763,35 +902,62 @@ impl App {
                     self.add_terminal_output("=== Approval Modes ===".to_string());
                     self.add_terminal_output("Available approval modes:".to_string());
                     self.add_terminal_output("".to_string());
-                    self.add_terminal_output("✓ always - Require approval for all commands".to_string());
-                    self.add_terminal_output("✓ never - Auto-approve all commands (not recommended)".to_string());
-                    self.add_terminal_output("✓ policy - Use policy engine to determine approval (recommended)".to_string());
-                    self.add_terminal_output("✓ unknown - Only ask for unknown/unrecognized commands".to_string());
+                    self.add_terminal_output(
+                        "✓ always - Require approval for all commands".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "✓ never - Auto-approve all commands (not recommended)".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "✓ policy - Use policy engine to determine approval (recommended)"
+                            .to_string(),
+                    );
+                    self.add_terminal_output(
+                        "✓ unknown - Only ask for unknown/unrecognized commands".to_string(),
+                    );
                     self.add_terminal_output("".to_string());
                     self.add_terminal_output("Current mode: policy".to_string());
-                    self.add_terminal_output("Use ':approval <mode>' to change the approval mode".to_string());
+                    self.add_terminal_output(
+                        "Use ':approval <mode>' to change the approval mode".to_string(),
+                    );
                 }
                 "always" => {
-                    self.add_terminal_output("✓ Approval mode set to: Always require approval".to_string());
-                    self.add_terminal_output("All commands will require user confirmation".to_string());
+                    self.add_terminal_output(
+                        "✓ Approval mode set to: Always require approval".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "All commands will require user confirmation".to_string(),
+                    );
                 }
                 "never" => {
-                    self.add_terminal_output("⚠️ Approval mode set to: Never require approval".to_string());
-                    self.add_terminal_output("Warning: This disables security approval prompts".to_string());
+                    self.add_terminal_output(
+                        "⚠️ Approval mode set to: Never require approval".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "Warning: This disables security approval prompts".to_string(),
+                    );
                 }
                 "policy" => {
                     self.add_terminal_output("✓ Approval mode set to: Policy-based".to_string());
-                    self.add_terminal_output("Commands will be filtered through the security policy engine".to_string());
+                    self.add_terminal_output(
+                        "Commands will be filtered through the security policy engine".to_string(),
+                    );
                 }
                 "unknown" => {
-                    self.add_terminal_output("✓ Approval mode set to: Unknown commands only".to_string());
-                    self.add_terminal_output("Only unrecognized commands will require approval".to_string());
+                    self.add_terminal_output(
+                        "✓ Approval mode set to: Unknown commands only".to_string(),
+                    );
+                    self.add_terminal_output(
+                        "Only unrecognized commands will require approval".to_string(),
+                    );
                 }
                 _ => {
-                    self.status_message = "Unknown approval mode. Use ':approval' to see available modes.".to_string();
+                    self.status_message =
+                        "Unknown approval mode. Use ':approval' to see available modes."
+                            .to_string();
                 }
             }
-        
+
         // Configuration Commands
         } else if cmd == "config" || cmd.starts_with("config ") {
             let action = cmd.strip_prefix("config ").unwrap_or("");
@@ -805,7 +971,10 @@ impl App {
                     self.add_terminal_output("  Max Context Tokens: 100000".to_string());
                     self.add_terminal_output("".to_string());
                     self.add_terminal_output("LLM:".to_string());
-                    self.add_terminal_output(format!("  Default Provider: {:?}", self.model_config.provider));
+                    self.add_terminal_output(format!(
+                        "  Default Provider: {:?}",
+                        self.model_config.provider
+                    ));
                     self.add_terminal_output("  Timeout: 120 seconds".to_string());
                     self.add_terminal_output("  Retry Attempts: 3".to_string());
                     self.add_terminal_output("".to_string());
@@ -818,73 +987,92 @@ impl App {
                     self.add_terminal_output("  Enabled: true".to_string());
                     self.add_terminal_output("  Theme: default".to_string());
                     self.add_terminal_output("  Auto-scroll: true".to_string());
-                    if let Some(config_path) = dirs::home_dir().map(|h| h.join(".kota").join("config.toml")) {
+                    if let Some(config_path) =
+                        dirs::home_dir().map(|h| h.join(".kota").join("config.toml"))
+                    {
                         self.add_terminal_output(format!("Config file: {}", config_path.display()));
                     }
                 }
                 "save" => {
                     self.add_terminal_output("✓ Configuration saved successfully".to_string());
-                    if let Some(config_path) = dirs::home_dir().map(|h| h.join(".kota").join("config.toml")) {
+                    if let Some(config_path) =
+                        dirs::home_dir().map(|h| h.join(".kota").join("config.toml"))
+                    {
                         self.add_terminal_output(format!("Location: {}", config_path.display()));
                     }
                 }
                 "load" => {
                     self.add_terminal_output("✓ Configuration loaded successfully".to_string());
-                    if let Some(config_path) = dirs::home_dir().map(|h| h.join(".kota").join("config.toml")) {
+                    if let Some(config_path) =
+                        dirs::home_dir().map(|h| h.join(".kota").join("config.toml"))
+                    {
                         self.add_terminal_output(format!("From: {}", config_path.display()));
                     }
                 }
                 "reset" => {
                     self.add_terminal_output("✓ Configuration reset to defaults".to_string());
-                    if let Some(config_path) = dirs::home_dir().map(|h| h.join(".kota").join("config.toml")) {
+                    if let Some(config_path) =
+                        dirs::home_dir().map(|h| h.join(".kota").join("config.toml"))
+                    {
                         self.add_terminal_output(format!("Saved to: {}", config_path.display()));
                     }
                 }
                 _ => {
-                    self.status_message = "Unknown config command. Use ':config' to see current settings.".to_string();
+                    self.status_message =
+                        "Unknown config command. Use ':config' to see current settings."
+                            .to_string();
                 }
             }
         } else {
             self.status_message = format!("Unknown command: {}", cmd);
         }
     }
-    
+
     #[allow(clippy::await_holding_lock)]
     pub async fn handle_llm_response(&mut self, original_prompt: String, response: String) {
         // Always show KOTA responses in full - don't collapse them
         let message_content = MessageContent::Text(response.clone());
-        
+
         self.messages.push(("KOTA".to_string(), message_content));
-        
+
         // Store KOTA response in memory
-        if let Err(e) = self.memory_manager.store_conversation_summary(&format!("KOTA: {}", &response[..500.min(response.len())])) {
+        if let Err(e) = self
+            .memory_manager
+            .store_conversation_summary(&format!("KOTA: {}", &response[..500.min(response.len())]))
+        {
             eprintln!("Warning: Failed to store KOTA response in memory: {}", e);
         }
-        
+
         // Auto-scroll to bottom when KOTA responds
         self.auto_scroll_to_bottom();
-        
+
         self.add_terminal_output(format!("KOTA: {}", &response[..response.len().min(100)]));
-        
+
         // Check for S/R blocks
         if sr_parser::contains_sr_blocks(&response) {
             match sr_parser::parse_sr_blocks(&response) {
                 Ok(blocks) => {
                     if !blocks.is_empty() {
-                        self.add_terminal_output(format!("Found {} S/R blocks - applying changes...", blocks.len()));
-                        
+                        self.add_terminal_output(format!(
+                            "Found {} S/R blocks - applying changes...",
+                            blocks.len()
+                        ));
+
                         // Apply blocks (simplified for TUI)
                         let apply_result = {
                             if let Ok(cm) = self.context_manager.lock() {
-                                editor::confirm_and_apply_blocks(blocks, &original_prompt, &cm).await
+                                editor::confirm_and_apply_blocks(blocks, &original_prompt, &cm)
+                                    .await
                             } else {
                                 Err(anyhow::anyhow!("Could not access context manager"))
                             }
                         };
-                        
+
                         match apply_result {
                             Ok(_) => {
-                                self.add_terminal_output("Changes applied successfully".to_string());
+                                self.add_terminal_output(
+                                    "Changes applied successfully".to_string(),
+                                );
                                 self.update_context_view();
                             }
                             Err(e) => {
@@ -898,33 +1086,42 @@ impl App {
                 }
             }
         }
-        
+
         // Check for command blocks
         if cmd_parser::contains_command_blocks(&response) {
             match cmd_parser::parse_command_blocks(&response) {
                 Ok(cmd_blocks) => {
                     if !cmd_blocks.is_empty() {
                         // Separate autonomous from approval-required commands
-                        let (autonomous_commands, approval_commands): (Vec<_>, Vec<_>) = 
-                            cmd_blocks.iter().partition(|cmd| self.is_autonomous_command(&cmd.command));
-                        
+                        let (autonomous_commands, approval_commands): (Vec<_>, Vec<_>) = cmd_blocks
+                            .iter()
+                            .partition(|cmd| self.is_autonomous_command(&cmd.command));
+
                         // Execute autonomous commands immediately
                         if !autonomous_commands.is_empty() {
-                            self.add_terminal_output("🤖 Executing autonomous AI commands:".to_string());
+                            self.add_terminal_output(
+                                "🤖 Executing autonomous AI commands:".to_string(),
+                            );
                             for cmd_block in autonomous_commands {
                                 self.add_terminal_output(format!("→ {}", cmd_block.command));
                                 // Execute the command autonomously
-                                self.execute_autonomous_command(cmd_block.command.clone()).await;
+                                self.execute_autonomous_command(cmd_block.command.clone())
+                                    .await;
                             }
                         }
-                        
+
                         // Show commands requiring approval in terminal for user execution
                         if !approval_commands.is_empty() {
-                            self.add_terminal_output(format!("Found {} command(s) requiring approval:", approval_commands.len()));
+                            self.add_terminal_output(format!(
+                                "Found {} command(s) requiring approval:",
+                                approval_commands.len()
+                            ));
                             for cmd_block in approval_commands.iter() {
                                 self.add_suggested_command(cmd_block.command.clone());
                             }
-                            self.add_terminal_output("Press 'x' in terminal mode to execute commands".to_string());
+                            self.add_terminal_output(
+                                "Press 'x' in terminal mode to execute commands".to_string(),
+                            );
                         }
                     }
                 }
@@ -934,51 +1131,51 @@ impl App {
             }
         }
     }
-    
+
     fn is_autonomous_command(&self, command: &str) -> bool {
         let cmd = command.trim();
-        
+
         // Agent commands (autonomous)
-        if cmd.starts_with("/agents") || 
-           cmd.starts_with("/agent ") ||
-           cmd.starts_with("/delegate ") ||
-           cmd.starts_with("/ask_agent ") {
+        if cmd.starts_with("/agents")
+            || cmd.starts_with("/agent ")
+            || cmd.starts_with("/delegate ")
+            || cmd.starts_with("/ask_agent ")
+        {
             return true;
         }
-        
+
         // Security commands (autonomous)
-        if cmd.starts_with("/security") ||
-           cmd.starts_with("/sandbox ") ||
-           cmd.starts_with("/approval ") {
+        if cmd.starts_with("/security")
+            || cmd.starts_with("/sandbox ")
+            || cmd.starts_with("/approval ")
+        {
             return true;
         }
-        
-        // Memory commands (autonomous) 
-        if cmd.starts_with("/memory") ||
-           cmd.starts_with("/search ") ||
-           cmd.starts_with("/learn ") {
+
+        // Memory commands (autonomous)
+        if cmd.starts_with("/memory") || cmd.starts_with("/search ") || cmd.starts_with("/learn ") {
             return true;
         }
-        
+
         // File management commands (autonomous)
-        if cmd.starts_with("/add_file ") ||
-           cmd.starts_with("/add_snippet ") ||
-           cmd.starts_with("/show_context") ||
-           cmd.starts_with("/clear_context") {
+        if cmd.starts_with("/add_file ")
+            || cmd.starts_with("/add_snippet ")
+            || cmd.starts_with("/show_context")
+            || cmd.starts_with("/clear_context")
+        {
             return true;
         }
-        
+
         // Restricted commands (require user approval)
-        if cmd.starts_with("/config") ||
-           cmd.starts_with("/provider ") ||
-           cmd.starts_with("/model ") {
+        if cmd.starts_with("/config") || cmd.starts_with("/provider ") || cmd.starts_with("/model ")
+        {
             return false;
         }
-        
+
         // All other commands require approval by default
         false
     }
-    
+
     async fn execute_autonomous_command(&mut self, command: String) {
         // Strip the leading slash if present
         let cmd = if command.starts_with('/') {
@@ -986,7 +1183,7 @@ impl App {
         } else {
             command
         };
-        
+
         // Execute the command using the existing TUI command processing
         self.process_command(cmd).await;
     }

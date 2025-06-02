@@ -1,6 +1,6 @@
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use anyhow::{Result, Context};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SystemConfig {
@@ -41,36 +41,39 @@ impl PromptsConfig {
             "./prompts.toml",
             "../prompts.toml", // In case running from target/debug
         ];
-        
+
         for path in &config_paths {
             if let Ok(content) = fs::read_to_string(path) {
                 return toml::from_str(&content)
                     .with_context(|| format!("Failed to parse prompts.toml from {}", path));
             }
         }
-        
+
         // If no config file found, return default configuration
         Ok(Self::default())
     }
-    
+
     pub fn get_system_instructions(&self) -> &str {
         &self.system.instructions
     }
-    
+
     pub fn get_gemini_commit_prompt(&self, original_prompt: &str, git_diff: &str) -> String {
-        self.commit_generation.gemini_prompt
+        self.commit_generation
+            .gemini_prompt
             .replace("{original_prompt}", original_prompt)
             .replace("{git_diff}", git_diff)
     }
-    
+
     pub fn get_ollama_commit_prompt(&self, original_prompt: &str, git_diff: &str) -> String {
-        self.commit_generation.ollama_prompt
+        self.commit_generation
+            .ollama_prompt
             .replace("{original_prompt}", original_prompt)
             .replace("{git_diff}", git_diff)
     }
-    
+
     pub fn get_anthropic_commit_prompt(&self, original_prompt: &str, git_diff: &str) -> String {
-        self.commit_generation.anthropic_prompt
+        self.commit_generation
+            .anthropic_prompt
             .replace("{original_prompt}", original_prompt)
             .replace("{git_diff}", git_diff)
     }

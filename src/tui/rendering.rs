@@ -1,5 +1,3 @@
-use std::io;
-use std::time::Duration;
 use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
@@ -11,36 +9,35 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     Frame, Terminal,
 };
+use std::io;
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 use crate::context::ContextManager;
 use crate::llm::ModelConfig;
 
 use super::app::App;
-use super::types::{AppMessage, InputMode, FocusedPane};
+use super::types::{AppMessage, FocusedPane, InputMode};
 use super::widgets;
 
-pub async fn run_tui(
-    context_manager: ContextManager,
-    model_config: ModelConfig,
-) -> Result<()> {
+pub async fn run_tui(context_manager: ContextManager, model_config: ModelConfig) -> Result<()> {
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    
+
     // Create app state
     let mut app = App::new(context_manager, model_config)?;
     app.update_context_view();
-    
+
     // Extract the receiver from the app
     let mut rx = app.rx.take().unwrap();
-    
+
     // Run the app
     let res = run_app(&mut terminal, &mut app, &mut rx).await;
-    
+
     // Restore terminal
     disable_raw_mode()?;
     execute!(
@@ -49,7 +46,7 @@ pub async fn run_tui(
         DisableMouseCapture
     )?;
     terminal.show_cursor()?;
-    
+
     res
 }
 
@@ -63,14 +60,14 @@ async fn run_app<B: Backend>(
         if app.should_quit {
             return Ok(());
         }
-        
+
         // Update time and live data
         app.update_time();
         app.update_context_view();
-        
+
         // Draw UI
         terminal.draw(|f| ui(f, app))?;
-        
+
         // Handle async messages first
         while let Ok(msg) = rx.try_recv() {
             match msg {
@@ -86,7 +83,7 @@ async fn run_app<B: Backend>(
                 }
             }
         }
-        
+
         // Handle keyboard events
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
@@ -110,10 +107,15 @@ async fn run_app<B: Backend>(
                         }
                         KeyCode::Char('f') => {
                             // Only switch to file browser if we're not processing input and input is empty
-                            if !app.is_processing && app.input.is_empty() && app.input_lines.len() <= 1 {
+                            if !app.is_processing
+                                && app.input.is_empty()
+                                && app.input_lines.len() <= 1
+                            {
                                 app.input_mode = InputMode::FileBrowser;
                                 app.focused_pane = FocusedPane::FileBrowser;
-                                app.status_message = "FILE BROWSER - Navigate with hjkl, Enter to add file".to_string();
+                                app.status_message =
+                                    "FILE BROWSER - Navigate with hjkl, Enter to add file"
+                                        .to_string();
                             }
                         }
                         KeyCode::Char('g') => {
@@ -152,7 +154,13 @@ async fn run_app<B: Backend>(
                             app.focused_pane = match app.focused_pane {
                                 FocusedPane::Chat => FocusedPane::Terminal,
                                 FocusedPane::Terminal => FocusedPane::Context,
-                                FocusedPane::Context => if app.show_file_browser { FocusedPane::FileBrowser } else { FocusedPane::Chat },
+                                FocusedPane::Context => {
+                                    if app.show_file_browser {
+                                        FocusedPane::FileBrowser
+                                    } else {
+                                        FocusedPane::Chat
+                                    }
+                                }
                                 FocusedPane::FileBrowser => FocusedPane::Chat,
                             };
                         }
@@ -193,7 +201,13 @@ async fn run_app<B: Backend>(
                         KeyCode::Left => {
                             // Cycle through panes backwards
                             app.focused_pane = match app.focused_pane {
-                                FocusedPane::Chat => if app.show_file_browser { FocusedPane::FileBrowser } else { FocusedPane::Context },
+                                FocusedPane::Chat => {
+                                    if app.show_file_browser {
+                                        FocusedPane::FileBrowser
+                                    } else {
+                                        FocusedPane::Context
+                                    }
+                                }
                                 FocusedPane::Terminal => FocusedPane::Chat,
                                 FocusedPane::Context => FocusedPane::Terminal,
                                 FocusedPane::FileBrowser => FocusedPane::Context,
@@ -204,7 +218,13 @@ async fn run_app<B: Backend>(
                             app.focused_pane = match app.focused_pane {
                                 FocusedPane::Chat => FocusedPane::Terminal,
                                 FocusedPane::Terminal => FocusedPane::Context,
-                                FocusedPane::Context => if app.show_file_browser { FocusedPane::FileBrowser } else { FocusedPane::Chat },
+                                FocusedPane::Context => {
+                                    if app.show_file_browser {
+                                        FocusedPane::FileBrowser
+                                    } else {
+                                        FocusedPane::Chat
+                                    }
+                                }
                                 FocusedPane::FileBrowser => FocusedPane::Chat,
                             };
                         }
@@ -214,43 +234,49 @@ async fn run_app<B: Backend>(
                         KeyCode::Char('l') => {
                             // l for scrolling right in content (currently not used but reserved for future horizontal scrolling)
                         }
-                        KeyCode::PageUp => {
-                            match app.focused_pane {
-                                FocusedPane::Chat => {
-                                    app.scroll_offset = app.scroll_offset.saturating_sub(10);
-                                    app.auto_scroll_enabled = false;
-                                }
-                                FocusedPane::Terminal => app.terminal_scroll = app.terminal_scroll.saturating_sub(10),
-                                FocusedPane::Context => app.context_scroll = app.context_scroll.saturating_sub(10),
-                                _ => {}
+                        KeyCode::PageUp => match app.focused_pane {
+                            FocusedPane::Chat => {
+                                app.scroll_offset = app.scroll_offset.saturating_sub(10);
+                                app.auto_scroll_enabled = false;
                             }
-                        }
-                        KeyCode::PageDown => {
-                            match app.focused_pane {
-                                FocusedPane::Chat => {
-                                    app.scroll_offset += 10;
-                                    app.auto_scroll_enabled = false;
-                                }
-                                FocusedPane::Terminal => app.terminal_scroll += 10,
-                                FocusedPane::Context => app.context_scroll += 10,
-                                _ => {}
+                            FocusedPane::Terminal => {
+                                app.terminal_scroll = app.terminal_scroll.saturating_sub(10)
                             }
-                        }
+                            FocusedPane::Context => {
+                                app.context_scroll = app.context_scroll.saturating_sub(10)
+                            }
+                            _ => {}
+                        },
+                        KeyCode::PageDown => match app.focused_pane {
+                            FocusedPane::Chat => {
+                                app.scroll_offset += 10;
+                                app.auto_scroll_enabled = false;
+                            }
+                            FocusedPane::Terminal => app.terminal_scroll += 10,
+                            FocusedPane::Context => app.context_scroll += 10,
+                            _ => {}
+                        },
                         KeyCode::Char('x') => {
                             // Execute selected command when terminal is focused
-                            if matches!(app.focused_pane, FocusedPane::Terminal) && !app.suggested_commands.is_empty() {
+                            if matches!(app.focused_pane, FocusedPane::Terminal)
+                                && !app.suggested_commands.is_empty()
+                            {
                                 app.execute_selected_command_async().await;
                             }
                         }
                         KeyCode::Char('n') => {
                             // Navigate to next command when terminal is focused
-                            if matches!(app.focused_pane, FocusedPane::Terminal) && !app.suggested_commands.is_empty() {
+                            if matches!(app.focused_pane, FocusedPane::Terminal)
+                                && !app.suggested_commands.is_empty()
+                            {
                                 app.navigate_commands(1);
                             }
                         }
                         KeyCode::Char('p') => {
                             // Navigate to previous command when terminal is focused
-                            if matches!(app.focused_pane, FocusedPane::Terminal) && !app.suggested_commands.is_empty() {
+                            if matches!(app.focused_pane, FocusedPane::Terminal)
+                                && !app.suggested_commands.is_empty()
+                            {
                                 app.navigate_commands(-1);
                             }
                         }
@@ -259,7 +285,9 @@ async fn run_app<B: Backend>(
                             if matches!(app.focused_pane, FocusedPane::Terminal) {
                                 app.suggested_commands.clear();
                                 app.selected_command_index = 0;
-                                app.add_terminal_output("Cleared all suggested commands".to_string());
+                                app.add_terminal_output(
+                                    "Cleared all suggested commands".to_string(),
+                                );
                             }
                         }
                         _ => {}
@@ -275,15 +303,20 @@ async fn run_app<B: Backend>(
                                 // Check if we should auto-continue to next line
                                 if app.should_auto_continue() {
                                     app.add_new_line();
-                                    app.status_message = "Multi-line mode - Ctrl+D to send, Esc to cancel".to_string();
+                                    app.status_message =
+                                        "Multi-line mode - Ctrl+D to send, Esc to cancel"
+                                            .to_string();
                                 } else if !app.get_full_input().trim().is_empty() {
                                     // Send the message
                                     app.input_mode = InputMode::Normal;
-                                    app.process_user_input(String::new()).await; // Empty string means use full input
+                                    app.process_user_input(String::new()).await;
+                                    // Empty string means use full input
                                 }
                             }
                         }
-                        KeyCode::Char(c) if key.modifiers.contains(KeyModifiers::CONTROL) && c == 'd' => {
+                        KeyCode::Char(c)
+                            if key.modifiers.contains(KeyModifiers::CONTROL) && c == 'd' =>
+                        {
                             // Ctrl+D to force send multi-line input
                             if !app.is_processing && !app.get_full_input().trim().is_empty() {
                                 app.input_mode = InputMode::Normal;
@@ -328,7 +361,8 @@ async fn run_app<B: Backend>(
                             KeyCode::Enter => {
                                 // Add selected file to context
                                 if let Some(path) = app.file_browser.enter_selected()? {
-                                    if let Err(e) = app.add_file_to_context(path.to_str().unwrap()) {
+                                    if let Err(e) = app.add_file_to_context(path.to_str().unwrap())
+                                    {
                                         app.status_message = format!("Error adding file: {}", e);
                                     }
                                 }
@@ -354,54 +388,54 @@ fn ui(f: &mut Frame, app: &App) {
         f.render_widget(warning, area);
         return;
     }
-    
+
     // Calculate dynamic input area height based on content
     let input_height = if app.input_lines.len() > 1 {
         std::cmp::min(5, app.input_lines.len() as u16 + 2) // Max 5 lines for input
     } else {
         3
     };
-    
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),              // Header (fixed)
-            Constraint::Min(15),                // Main area (flexible, minimum 15 lines)
-            Constraint::Length(input_height),   // Input (dynamic height)
-            Constraint::Length(1),              // Status bar (fixed)
+            Constraint::Length(3),            // Header (fixed)
+            Constraint::Min(15),              // Main area (flexible, minimum 15 lines)
+            Constraint::Length(input_height), // Input (dynamic height)
+            Constraint::Length(1),            // Status bar (fixed)
         ])
         .split(area);
-    
+
     // Header
     let header = widgets::create_header(app);
     f.render_widget(header, chunks[0]);
-    
+
     // Main area - split horizontally with strict constraints
     let main_chunks = if app.show_file_browser {
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Length(24),     // File browser (fixed width, reduced)
-                Constraint::Min(40),        // Chat/terminal (flexible middle, smaller min)  
-                Constraint::Length(28),     // Context (fixed width, reduced)
+                Constraint::Length(24), // File browser (fixed width, reduced)
+                Constraint::Min(40),    // Chat/terminal (flexible middle, smaller min)
+                Constraint::Length(28), // Context (fixed width, reduced)
             ])
             .split(chunks[1])
     } else {
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Min(45),        // Chat/terminal (larger when no file browser)
-                Constraint::Length(28),     // Context (fixed width, reduced)
+                Constraint::Min(45),    // Chat/terminal (larger when no file browser)
+                Constraint::Length(28), // Context (fixed width, reduced)
             ])
             .split(chunks[1])
     };
-    
+
     // Render components based on layout
     if app.show_file_browser {
         // File browser
         let file_browser = widgets::create_file_browser(app);
         f.render_widget(file_browser, main_chunks[0]);
-        
+
         // Chat/terminal area (split vertically with better constraints)
         let chat_terminal_chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -410,15 +444,15 @@ fn ui(f: &mut Frame, app: &App) {
                 Constraint::Percentage(40), // Terminal (40% of available space)
             ])
             .split(main_chunks[1]);
-        
+
         // Chat history
         let chat = widgets::create_chat_view(app);
         f.render_widget(chat, chat_terminal_chunks[0]);
-        
+
         // Terminal output
         let terminal = widgets::create_terminal_view(app);
         f.render_widget(terminal, chat_terminal_chunks[1]);
-        
+
         // Context view
         let context = widgets::create_context_view(app);
         f.render_widget(context, main_chunks[2]);
@@ -431,24 +465,24 @@ fn ui(f: &mut Frame, app: &App) {
                 Constraint::Percentage(40), // Terminal (40% of available space)
             ])
             .split(main_chunks[0]);
-        
+
         // Chat history
         let chat = widgets::create_chat_view(app);
         f.render_widget(chat, chat_terminal_chunks[0]);
-        
+
         // Terminal output
         let terminal = widgets::create_terminal_view(app);
         f.render_widget(terminal, chat_terminal_chunks[1]);
-        
+
         // Context view
         let context = widgets::create_context_view(app);
         f.render_widget(context, main_chunks[1]);
     }
-    
+
     // Input area
     let input = widgets::create_input_area(app);
     f.render_widget(input, chunks[2]);
-    
+
     // Status bar
     let status_bar = widgets::create_status_bar(app);
     f.render_widget(status_bar, chunks[3]);

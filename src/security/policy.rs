@@ -1,9 +1,9 @@
 // Security policy engine for command filtering and access control
 
-use std::collections::HashMap;
-use anyhow::{Result, bail};
-use serde::{Deserialize, Serialize};
+use anyhow::{bail, Result};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Command execution policy
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,20 +53,20 @@ impl PolicyEngine {
             policies: HashMap::new(),
             active_policy: "default".to_string(),
         };
-        
+
         // Add default policies
         engine.add_policy(ExecutionPolicy::default());
         engine.add_policy(ExecutionPolicy::safe());
         engine.add_policy(ExecutionPolicy::strict());
-        
+
         engine
     }
-    
+
     /// Add a policy to the engine
     pub fn add_policy(&mut self, policy: ExecutionPolicy) {
         self.policies.insert(policy.name.clone(), policy);
     }
-    
+
     /// Set the active policy
     pub fn set_active_policy(&mut self, name: &str) -> Result<()> {
         if self.policies.contains_key(name) {
@@ -76,19 +76,21 @@ impl PolicyEngine {
             bail!("Policy '{}' not found", name);
         }
     }
-    
+
     /// Evaluate a command against the active policy
     pub fn evaluate_command(&self, command: &str, args: &[String]) -> Result<PolicyDecision> {
-        let policy = self.policies.get(&self.active_policy)
+        let policy = self
+            .policies
+            .get(&self.active_policy)
             .ok_or_else(|| anyhow::anyhow!("Active policy not found"))?;
-        
+
         // Check denied commands first (they take precedence)
         for rule in &policy.denied_commands {
             if let Some(decision) = self.match_rule(rule, command, args, PolicyAction::Deny)? {
                 return Ok(decision);
             }
         }
-        
+
         // Check allowed commands
         for rule in &policy.allowed_commands {
             let action = if policy.require_approval {
@@ -96,12 +98,12 @@ impl PolicyEngine {
             } else {
                 PolicyAction::Allow
             };
-            
+
             if let Some(decision) = self.match_rule(rule, command, args, action)? {
                 return Ok(decision);
             }
         }
-        
+
         // No rules matched, use default action
         Ok(PolicyDecision {
             action: policy.default_action,
@@ -109,7 +111,7 @@ impl PolicyEngine {
             matched_rule: None,
         })
     }
-    
+
     /// Match a single rule against a command
     fn match_rule(
         &self,
@@ -119,15 +121,31 @@ impl PolicyEngine {
         action: PolicyAction,
     ) -> Result<Option<PolicyDecision>> {
         // Check if command matches the pattern
-        let regex = Regex::new(&rule.pattern)?;
-        if !regex.is_match(command) {
+        // Optimize: check for exact match first (common case)
+        let matches = if rule.pattern.starts_with('^') && rule.pattern.ends_with('$') {
+            // Try exact match for patterns like "^ls$"
+            let exact_pattern = &rule.pattern[1..rule.pattern.len() - 1];
+            if !exact_pattern.contains('|') && !exact_pattern.contains('(') {
+                command == exact_pattern
+            } else {
+                // Fall back to regex for patterns with alternation like "^(ls|cat|echo)$"
+                let regex = Regex::new(&rule.pattern)?;
+                regex.is_match(command)
+            }
+        } else {
+            // Use regex for complex patterns
+            let regex = Regex::new(&rule.pattern)?;
+            regex.is_match(command)
+        };
+
+        if !matches {
             return Ok(None);
         }
-        
+
         // Check denied arguments first (they take precedence)
         if let Some(denied_patterns) = &rule.denied_args {
             let args_str = args.join(" ");
-            
+
             for pattern in denied_patterns {
                 let regex = Regex::new(pattern)?;
                 if regex.is_match(&args_str) {
@@ -139,12 +157,12 @@ impl PolicyEngine {
                 }
             }
         }
-        
+
         // Check allowed arguments
         if let Some(allowed_patterns) = &rule.allowed_args {
             let args_str = args.join(" ");
             let mut any_match = false;
-            
+
             for pattern in allowed_patterns {
                 let regex = Regex::new(pattern)?;
                 if regex.is_match(&args_str) {
@@ -152,12 +170,12 @@ impl PolicyEngine {
                     break;
                 }
             }
-            
+
             if !any_match && !allowed_patterns.is_empty() {
                 return Ok(None);
             }
         }
-        
+
         Ok(Some(PolicyDecision {
             action,
             rule_message: rule.message.clone(),
@@ -180,46 +198,101 @@ impl ExecutionPolicy {
         Self {
             name: "default".to_string(),
             allowed_commands: vec![
+                // Simple exact match commands
                 CommandRule {
-                    pattern: "^(ls|cat|echo|pwd|date|whoami)$".to_string(),
+                    pattern: "^ls$".to_string(),
                     allowed_args: None,
                     denied_args: None,
-                    message: Some("Basic safe command".to_string()),
+                    message: Some("List files".to_string()),
+                },
+                CommandRule {
+                    pattern: "^cat$".to_string(),
+                    allowed_args: None,
+                    denied_args: None,
+                    message: Some("View file contents".to_string()),
+                },
+                CommandRule {
+                    pattern: "^echo$".to_string(),
+                    allowed_args: None,
+                    denied_args: None,
+                    message: Some("Echo text".to_string()),
+                },
+                CommandRule {
+                    pattern: "^pwd$".to_string(),
+                    allowed_args: None,
+                    denied_args: None,
+                    message: Some("Show current directory".to_string()),
+                },
+                CommandRule {
+                    pattern: "^date$".to_string(),
+                    allowed_args: None,
+                    denied_args: None,
+                    message: Some("Show date/time".to_string()),
+                },
+                CommandRule {
+                    pattern: "^whoami$".to_string(),
+                    allowed_args: None,
+                    denied_args: None,
+                    message: Some("Show current user".to_string()),
                 },
                 CommandRule {
                     pattern: "^git$".to_string(),
                     allowed_args: Some(vec![
-                        "^(status|log|diff|branch|show)".to_string(),
+                        "^status".to_string(),
+                        "^log".to_string(),
+                        "^diff".to_string(),
+                        "^branch".to_string(),
+                        "^show".to_string(),
                     ]),
-                    denied_args: Some(vec![
-                        "push.*--force".to_string(),
-                    ]),
+                    denied_args: Some(vec!["push.*--force".to_string()]),
                     message: Some("Git read-only operations".to_string()),
                 },
             ],
-            denied_commands: vec![
-                CommandRule {
-                    pattern: "^(rm|sudo|chmod|chown)$".to_string(),
-                    allowed_args: None,
-                    denied_args: None,
-                    message: Some("Potentially dangerous command".to_string()),
-                },
-            ],
+            denied_commands: vec![CommandRule {
+                pattern: "^(rm|sudo|chmod|chown)$".to_string(),
+                allowed_args: None,
+                denied_args: None,
+                message: Some("Potentially dangerous command".to_string()),
+            }],
             default_action: PolicyAction::RequireApproval,
             require_approval: false,
         }
     }
-    
+
     /// Create a safe policy (very restrictive)
     pub fn safe() -> Self {
         Self {
             name: "safe".to_string(),
             allowed_commands: vec![
                 CommandRule {
-                    pattern: "^(ls|cat|echo|pwd|date)$".to_string(),
+                    pattern: "^ls$".to_string(),
                     allowed_args: None,
                     denied_args: None,
-                    message: Some("Read-only safe command".to_string()),
+                    message: Some("List files".to_string()),
+                },
+                CommandRule {
+                    pattern: "^cat$".to_string(),
+                    allowed_args: None,
+                    denied_args: None,
+                    message: Some("View file contents".to_string()),
+                },
+                CommandRule {
+                    pattern: "^echo$".to_string(),
+                    allowed_args: None,
+                    denied_args: None,
+                    message: Some("Echo text".to_string()),
+                },
+                CommandRule {
+                    pattern: "^pwd$".to_string(),
+                    allowed_args: None,
+                    denied_args: None,
+                    message: Some("Show current directory".to_string()),
+                },
+                CommandRule {
+                    pattern: "^date$".to_string(),
+                    allowed_args: None,
+                    denied_args: None,
+                    message: Some("Show date/time".to_string()),
                 },
             ],
             denied_commands: vec![],
@@ -227,7 +300,7 @@ impl ExecutionPolicy {
             require_approval: true,
         }
     }
-    
+
     /// Create a strict policy (deny by default)
     pub fn strict() -> Self {
         Self {
@@ -243,38 +316,46 @@ impl ExecutionPolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_default_policy() {
         let engine = PolicyEngine::new();
-        
+
         // Test allowed command
         let decision = engine.evaluate_command("ls", &["-la".to_string()]).unwrap();
         assert_eq!(decision.action, PolicyAction::Allow);
-        
+
         // Test denied command
-        let decision = engine.evaluate_command("rm", &["-rf".to_string(), "/".to_string()]).unwrap();
+        let decision = engine
+            .evaluate_command("rm", &["-rf".to_string(), "/".to_string()])
+            .unwrap();
         assert_eq!(decision.action, PolicyAction::Deny);
-        
+
         // Test unknown command
         let decision = engine.evaluate_command("unknown", &[]).unwrap();
         assert_eq!(decision.action, PolicyAction::RequireApproval);
     }
-    
+
     #[test]
     fn test_git_rules() {
         let engine = PolicyEngine::new();
-        
+
         // Test allowed git command
-        let decision = engine.evaluate_command("git", &["status".to_string()]).unwrap();
+        let decision = engine
+            .evaluate_command("git", &["status".to_string()])
+            .unwrap();
         assert_eq!(decision.action, PolicyAction::Allow);
-        
+
         // Test denied git command
-        let decision = engine.evaluate_command("git", &["push".to_string(), "--force".to_string()]).unwrap();
+        let decision = engine
+            .evaluate_command("git", &["push".to_string(), "--force".to_string()])
+            .unwrap();
         assert_eq!(decision.action, PolicyAction::Deny);
-        
+
         // Test unmatched git command
-        let decision = engine.evaluate_command("git", &["commit".to_string()]).unwrap();
+        let decision = engine
+            .evaluate_command("git", &["commit".to_string()])
+            .unwrap();
         assert_eq!(decision.action, PolicyAction::RequireApproval);
     }
 }

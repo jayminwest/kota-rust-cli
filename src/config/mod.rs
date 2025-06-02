@@ -1,27 +1,27 @@
 // Configuration system for KOTA runtime settings and persistence
 
-use std::path::{Path, PathBuf};
-use anyhow::{Result, Context, bail};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
-use crate::security::{ExecutionPolicy, ApprovalMode, SandboxProfile};
 use crate::llm::LlmProvider;
+use crate::security::{ApprovalMode, ExecutionPolicy, SandboxProfile};
 
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KotaConfig {
     /// General settings
     pub general: GeneralConfig,
-    
+
     /// LLM configuration
     pub llm: LlmConfig,
-    
+
     /// Security settings
     pub security: SecurityConfig,
-    
+
     /// TUI settings
     pub tui: TuiConfig,
-    
+
     /// MCP server connections
     pub mcp: Option<McpConfig>,
 }
@@ -30,16 +30,16 @@ pub struct KotaConfig {
 pub struct GeneralConfig {
     /// Enable debug mode
     pub debug: bool,
-    
+
     /// Log level
     pub log_level: String,
-    
+
     /// Session directory
     pub session_dir: PathBuf,
-    
+
     /// Context directory
     pub context_dir: PathBuf,
-    
+
     /// Maximum context size in tokens
     pub max_context_tokens: usize,
 }
@@ -48,13 +48,13 @@ pub struct GeneralConfig {
 pub struct LlmConfig {
     /// Default provider
     pub default_provider: LlmProvider,
-    
+
     /// Provider-specific settings
     pub providers: ProvidersConfig,
-    
+
     /// Timeout in seconds
     pub timeout_seconds: u64,
-    
+
     /// Retry attempts
     pub retry_attempts: u32,
 }
@@ -93,19 +93,19 @@ pub struct AnthropicConfig {
 pub struct SecurityConfig {
     /// Approval mode
     pub approval_mode: ApprovalMode,
-    
+
     /// Active security policy
     pub active_policy: String,
-    
+
     /// Custom policies
     pub policies: Vec<ExecutionPolicy>,
-    
+
     /// Default sandbox profile
     pub default_sandbox: String,
-    
+
     /// Custom sandbox profiles
     pub sandbox_profiles: Vec<SandboxProfile>,
-    
+
     /// Auto-approve patterns
     pub auto_approve_patterns: Vec<String>,
 }
@@ -114,13 +114,13 @@ pub struct SecurityConfig {
 pub struct TuiConfig {
     /// Enable TUI by default
     pub enabled: bool,
-    
+
     /// Color scheme
     pub theme: String,
-    
+
     /// Show file browser by default
     pub show_file_browser: bool,
-    
+
     /// Auto-scroll chat
     pub auto_scroll: bool,
 }
@@ -144,49 +144,49 @@ impl KotaConfig {
     pub fn load(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read config file: {}", path.display()))?;
-        
+
         let mut config: Self = toml::from_str(&content)
             .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
-        
+
         // Load API keys from environment if not in config
         config.load_env_vars();
-        
+
         Ok(config)
     }
-    
+
     /// Save configuration to file
     pub fn save(&self, path: &Path) -> Result<()> {
         // Create a copy without sensitive data
         let mut safe_config = self.clone();
         safe_config.sanitize_for_save();
-        
-        let content = toml::to_string_pretty(&safe_config)
-            .context("Failed to serialize config")?;
-        
+
+        let content = toml::to_string_pretty(&safe_config).context("Failed to serialize config")?;
+
         // Create parent directory if it doesn't exist
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create config directory: {}", parent.display()))?;
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("Failed to create config directory: {}", parent.display())
+            })?;
         }
-        
+
         std::fs::write(path, content)
             .with_context(|| format!("Failed to write config file: {}", path.display()))?;
-        
+
         Ok(())
     }
-    
+
     /// Get the default configuration path
     pub fn default_path() -> Result<PathBuf> {
-        let home = dirs::home_dir()
-            .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
+        let home =
+            dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
         Ok(home.join(".kota").join("config.toml"))
     }
-    
+
     /// Create default configuration
     pub fn default() -> Self {
         let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         let kota_dir = home.join(".kota");
-        
+
         Self {
             general: GeneralConfig {
                 debug: false,
@@ -240,7 +240,7 @@ impl KotaConfig {
             mcp: None,
         }
     }
-    
+
     /// Load environment variables
     fn load_env_vars(&mut self) {
         // Gemini API key
@@ -249,7 +249,7 @@ impl KotaConfig {
                 gemini.api_key = std::env::var("GEMINI_API_KEY").ok();
             }
         }
-        
+
         // Anthropic API key
         if let Some(anthropic) = &mut self.llm.providers.anthropic {
             if anthropic.api_key.is_none() {
@@ -257,7 +257,7 @@ impl KotaConfig {
             }
         }
     }
-    
+
     /// Remove sensitive data before saving
     fn sanitize_for_save(&mut self) {
         // Remove API keys
@@ -267,7 +267,7 @@ impl KotaConfig {
         if let Some(anthropic) = &mut self.llm.providers.anthropic {
             anthropic.api_key = None;
         }
-        
+
         // Remove MCP API keys
         if let Some(mcp) = &mut self.mcp {
             for server in &mut mcp.servers {
@@ -275,7 +275,7 @@ impl KotaConfig {
             }
         }
     }
-    
+
     /// Merge with command-line overrides
     #[allow(dead_code)]
     pub fn merge_overrides(&mut self, overrides: Vec<(String, String)>) -> Result<()> {
@@ -301,7 +301,7 @@ pub fn load_or_create_config(path: Option<&Path>) -> Result<KotaConfig> {
     } else {
         KotaConfig::default_path()?
     };
-    
+
     if config_path.exists() {
         KotaConfig::load(&config_path)
     } else {
@@ -315,7 +315,7 @@ pub fn load_or_create_config(path: Option<&Path>) -> Result<KotaConfig> {
 mod tests {
     use super::*;
     use tempfile::TempDir;
-    
+
     #[test]
     fn test_default_config() {
         let config = KotaConfig::default();
@@ -323,28 +323,28 @@ mod tests {
         assert_eq!(config.llm.default_provider, LlmProvider::Anthropic);
         assert_eq!(config.security.approval_mode, ApprovalMode::Policy);
     }
-    
+
     #[test]
     fn test_save_and_load_config() {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.toml");
-        
+
         let config = KotaConfig::default();
         config.save(&config_path).unwrap();
-        
+
         let loaded = KotaConfig::load(&config_path).unwrap();
         assert_eq!(loaded.general.debug, config.general.debug);
     }
-    
+
     #[test]
     fn test_merge_overrides() {
         let mut config = KotaConfig::default();
-        
+
         let overrides = vec![
             ("debug".to_string(), "true".to_string()),
             ("log_level".to_string(), "debug".to_string()),
         ];
-        
+
         config.merge_overrides(overrides).unwrap();
         assert_eq!(config.general.debug, true);
         assert_eq!(config.general.log_level, "debug");

@@ -1,5 +1,5 @@
-use regex::Regex;
 use anyhow::Result;
+use regex::Regex;
 
 #[derive(Debug, Clone)]
 pub struct SearchReplaceBlock {
@@ -17,14 +17,14 @@ pub fn parse_sr_blocks(response: &str) -> Result<Vec<SearchReplaceBlock>> {
         // Look for file path followed by <<<<<<< SEARCH
         if i + 1 < lines.len() && lines[i + 1].trim() == "<<<<<<< SEARCH" {
             let file_path = lines[i].trim().to_string();
-            
+
             // Skip the <<<<<<< SEARCH line
             i += 2;
-            
-            // Collect search lines until we find ======= 
+
+            // Collect search lines until we find =======
             let mut search_lines = Vec::new();
             let mut found_separator = false;
-            
+
             while i < lines.len() {
                 let line = lines[i];
                 if line.trim().starts_with("=======") {
@@ -35,15 +35,18 @@ pub fn parse_sr_blocks(response: &str) -> Result<Vec<SearchReplaceBlock>> {
                 search_lines.push(line);
                 i += 1;
             }
-            
+
             if !found_separator {
-                return Err(anyhow::anyhow!("Malformed S/R block: missing separator for file {}", file_path));
+                return Err(anyhow::anyhow!(
+                    "Malformed S/R block: missing separator for file {}",
+                    file_path
+                ));
             }
-            
+
             // Collect replace lines until we find >>>>>>> REPLACE
             let mut replace_lines = Vec::new();
             let mut found_end = false;
-            
+
             while i < lines.len() {
                 let line = lines[i];
                 if line.trim() == ">>>>>>> REPLACE" {
@@ -54,14 +57,17 @@ pub fn parse_sr_blocks(response: &str) -> Result<Vec<SearchReplaceBlock>> {
                 replace_lines.push(line);
                 i += 1;
             }
-            
+
             if !found_end {
-                return Err(anyhow::anyhow!("Malformed S/R block: missing >>>>>>> REPLACE for file {}", file_path));
+                return Err(anyhow::anyhow!(
+                    "Malformed S/R block: missing >>>>>>> REPLACE for file {}",
+                    file_path
+                ));
             }
-            
+
             let search_content = search_lines.join("\n");
             let replace_content = replace_lines.join("\n");
-            
+
             blocks.push(SearchReplaceBlock {
                 file_path,
                 search_lines: search_content,
@@ -71,7 +77,7 @@ pub fn parse_sr_blocks(response: &str) -> Result<Vec<SearchReplaceBlock>> {
             i += 1;
         }
     }
-    
+
     Ok(blocks)
 }
 
@@ -149,7 +155,10 @@ old content
 "#;
         let result = parse_sr_blocks(missing_separator);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("missing separator"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("missing separator"));
 
         // Missing end marker
         let missing_end = r#"
@@ -161,7 +170,10 @@ new content
 "#;
         let result = parse_sr_blocks(missing_end);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("missing >>>>>>> REPLACE"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("missing >>>>>>> REPLACE"));
 
         // Partial block at end
         let partial_block = r#"
@@ -273,7 +285,9 @@ println!("This contains >>>>>>> REPLACE in string");
         let blocks = parse_sr_blocks(embedded_markers).unwrap();
         assert_eq!(blocks.len(), 1);
         assert!(blocks[0].search_lines.contains("<<<<<<< SEARCH in string"));
-        assert!(blocks[0].replace_lines.contains(">>>>>>> REPLACE in string"));
+        assert!(blocks[0]
+            .replace_lines
+            .contains(">>>>>>> REPLACE in string"));
     }
 
     #[test]
