@@ -1,0 +1,46 @@
+[package]
+name = "rust-bridge-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# HTTP server and client
+axum = "0.7"
+reqwest = { version = "0.12", features = ["json"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors"] }
+
+# JSON handling
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# WebSocket support
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+# Network discovery
+mdns-sd = "0.11"
+
+# File watching
+notify = "6.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Utilities
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Environment variables
+dotenv = "0.15"
+
+# System information
+hostname = "0.4"

@@ -34,7 +34,7 @@ impl CommandResult {
 }
 
 /// Trait for handling different types of commands
-pub trait CommandHandler {
+pub trait CommandHandler: Send + Sync {
     fn name(&self) -> &str;
     fn usage(&self) -> &str;
     fn description(&self) -> &str;
@@ -148,6 +148,10 @@ impl CommandRegistry {
         help
     }
 }
+
+// CommandRegistry is Send + Sync since all CommandHandler impls are Send + Sync
+unsafe impl Send for CommandRegistry {}
+unsafe impl Sync for CommandRegistry {}
 
 /// Helper function to execute shell commands with consistent output formatting
 pub fn execute_shell_command(command: &str, args: &[&str]) -> Result<CommandResult> {
@@ -454,7 +458,7 @@ impl CommandHandler for AgentCommand {
             if let Some(caps) = capabilities {
                 let mut output = String::new();
                 output.push_str(&format!("Agent: {}\n", arg.bright_cyan().bold()));
-                output.push_str(&format!("Capabilities:\n"));
+                output.push_str("Capabilities:\n");
                 for cap in caps {
                     output.push_str(&format!("  • {:?}\n", cap));
                 }

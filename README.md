@@ -36,13 +36,14 @@ KOTA represents an exploration of distributed cognition – where human and AI c
 ### 🖥️ Advanced Terminal User Interface (TUI)
 - **Multi-pane layout**: Chat history, terminal output, context view, and file browser
 - **Auto-scrolling chat**: Smart auto-scroll with manual override (toggle with 'a' key)
-- **Enhanced command display**: Clear command suggestions with status indicators (⏸ ▶ ✓ ✗)
+- **Enhanced command display**: Clear command suggestions with status indicators
 - **Individual command execution**: Navigate commands with 'n'/'p', execute selected with 'x'
 - **Multi-line input support**: Smart detection of code blocks, brackets, and line continuations
 - **Vim-style navigation**: Full hjkl navigation with arrow key alternatives
 - **Interactive file browser**: Navigate directories, add files to context
 - **Real-time updates**: Live display of time, git branch, file counts, scroll mode
-- **Emoji-free design**: Clean text-based indicators for compatibility
+- **Responsive design**: Automatic content scaling and truncation for clean display
+- **Professional layout**: Strict content boundaries prevent text bleeding between panes
 
 ### 🤖 AI-Powered Development
 - **AI-Powered Code Editing**: Uses Search/Replace blocks to suggest and apply precise code changes
@@ -51,8 +52,9 @@ KOTA represents an exploration of distributed cognition – where human and AI c
 - **Knowledge Base Integration**: Automatic conversation storage and retrieval system
 - **Auto-Commit**: Automatically creates git commits with AI-generated commit messages
 - **Multiple LLM Providers**: Works with Claude/Anthropic (default), Google Gemini, and Ollama (local)
-- **Multi-Agent Ready**: Infrastructure for advanced multi-agent coordination and task delegation
-- **macOS Security Framework**: Sandboxing, policy engine, and approval system for safe command execution
+- **Autonomous Command Execution**: AI can automatically execute agent, security, and memory commands without user approval
+- **Multi-Agent Framework**: Complete agent system with specialized agents for coding, planning, and research
+- **Advanced Security**: macOS-focused sandboxing, policy engine, and approval system for safe command execution
 
 ### 🔧 Developer Experience
 - **Advanced Input Handling**: Multi-line input with smart detection and visual feedback
@@ -61,7 +63,8 @@ KOTA represents an exploration of distributed cognition – where human and AI c
 - **File Safety**: Strict access control - can only edit files explicitly added to context
 - **Checkbox Feedback**: Clear visual indicators for context operations (`Context: [x] filename`)
 - **Persistent Memory**: Automatic knowledge base with conversation history and learning
-- **Zero Warnings**: Passes strictest Rust linting with 52+ comprehensive tests
+- **Zero Warnings**: Passes strictest Rust linting with 63+ comprehensive tests
+- **Professional Quality**: Zero-tolerance policy for warnings and dead code
 
 ## Prerequisites
 
@@ -102,7 +105,7 @@ cargo build --release
 cargo run
 ```
 
-The TUI provides an interactive multi-pane interface:
+The TUI provides an interactive multi-pane interface with professional layout and responsive design:
 
 #### TUI Navigation
 - **i** - Enter insert mode to type messages
@@ -124,24 +127,43 @@ The TUI provides an interactive multi-pane interface:
 
 ### Available Commands (Both TUI and CLI)
 
+#### Context Management
 - `/add_file <path>` - Add file contents to context
 - `/add_snippet <text>` - Add text snippet to context  
 - `/show_context` - Display current context
 - `/clear_context` - Clear all context
+
+#### Command Execution
 - `/run <command>` - Execute shell command
 - `/run_add <command>` - Execute shell command and add output to context
+
+#### Git Operations
 - `/git_add <file>` - Stage file for commit
 - `/git_commit "<message>"` - Create git commit
 - `/git_status` - Show git status
 - `/git_diff [<path>]` - Show git diff
+
+#### Agent Commands (Autonomous)
+- `/agents` - List available agents
+- `/agent <name>` - Get agent capabilities
+- `/delegate <task>` - Delegate task to best agent
+- `/ask_agent <question>` - Ask question to agent
+
+#### Security Commands (Autonomous)
+- `/security [status]` - Show security system status
+- `/sandbox [profile]` - Configure sandbox profiles
+- `/approval [mode]` - Configure approval settings
+
+#### Memory & Knowledge Base Commands (Autonomous)
+- `/memory` - Show recent conversation summaries
+- `/search <query>` - Search knowledge base for specific topics
+- `/learn <topic>: <content>` - Add specific learning to knowledge base
+
+#### Configuration Commands (Require Approval)
 - `/provider <anthropic|gemini|ollama>` - Switch between LLM providers
+- `/config [show|save|load|reset]` - Manage configuration
 - `/help` - Show all available commands
 - `/quit` - Exit application
-
-#### Memory & Knowledge Base Commands
-- `:memory` - Show recent conversation summaries
-- `:search <query>` - Search knowledge base for specific topics
-- `:learn <topic>: <content>` - Add specific learning to knowledge base
 
 ### AI Interactions
 
@@ -155,58 +177,32 @@ The AI can respond with:
 1. **File edits** using Search/Replace blocks
 2. **Commands** to build, test, or manage the project
 3. **Explanations** and guidance
+4. **Autonomous agent commands** (executed automatically)
 
-### Example TUI Workflow
+### Example Workflows
 
+#### TUI Workflow
 1. **Start KOTA**: `cargo run` (launches TUI by default)
 2. **Add files to context**: Press 'f', navigate to files, press Enter to add
 3. **Send message**: Press 'i', type "Add better error handling", press Enter
 4. **Execute commands**: AI suggestions appear in terminal, press Tab to focus terminal, 'x' to execute
 5. **Review changes**: File edits are applied automatically after confirmation
 
-### Example CLI Workflow
-
+#### Agent Delegation Workflow
 ```bash
-# Add files to context
-/add_file src/main.rs
-/add_file Cargo.toml
+# Ask AI to delegate a complex task
+You: I need to refactor this codebase to use async/await patterns throughout
 
-# Ask AI to make changes
-You: Add better error handling and logging
+# AI responds with autonomous agent commands:
+🤖 Executing autonomous AI commands:
+→ /agents
+→ /delegate refactor codebase to use async/await patterns
+→ /agent code_agent
 
-# AI suggests file changes and commands
-KOTA: I'll add error handling and logging to your application.
-
-src/main.rs
-<<<<<<< SEARCH
-fn main() {
-    println!("Hello, world!");
-}
-=======
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
-    log::info!("Starting application");
-    
-    println!("Hello, world!");
-    
-    Ok(())
-}
->>>>>>> REPLACE
-
-```bash
-cargo add env_logger log
-cargo build
+# AI provides detailed plan and begins execution
 ```
 
-# Review and approve changes
-Apply this change? (y/n/a/q) [yes/no/apply_all/quit]: y
-Execute this command? (y/n/q) [yes/no/quit]: y
-```
-
-### Self-Modification Workflow
-
-KOTA can modify its own source code to add new features or improve itself:
-
+#### Self-Modification Workflow
 ```bash
 # Use the wrapper script for automatic rebuild/restart
 ./run_kota.sh
@@ -226,24 +222,65 @@ You: Add a new command /version that shows the current version of KOTA
 ## Architecture
 
 ### Core Components
-- **Terminal User Interface**: Advanced multi-pane TUI with auto-scroll, enhanced commands, and multi-line input
+- **Terminal User Interface**: Advanced multi-pane TUI with professional layout and responsive design
 - **LLM Integration**: Supports Claude/Anthropic (default), Google Gemini, and Ollama (local)
 - **Search/Replace Parser**: Parses structured file edit suggestions
-- **Enhanced Command System**: Individual command execution with status tracking and navigation
+- **Enhanced Command System**: Individual command execution with status tracking and autonomous execution
 - **File Editor**: Handles interactive file modifications with safety checks
 - **Context Manager**: Maintains conversation context with strict access control
 - **Memory Manager**: Persistent knowledge base with automatic conversation storage
 - **File Browser**: Interactive navigation with sudo support
-- **Multi-line Input Handler**: Smart detection of code blocks, brackets, and continuations
+- **Multi-Agent Framework**: Complete agent system with manager, code agent, planning agent, and research agent
 - **Security Framework**: macOS-focused sandboxing, policy engine, and user approval system
+- **Configuration System**: TOML-based configuration with persistence and management
+
+### Multi-Agent Architecture
+
+KOTA includes a complete multi-agent framework with working implementations:
+
+#### Available Agents
+- **CodeAgent**: Specialized in code analysis, generation, and editing
+- **PlanningAgent**: Expert in task breakdown, project planning, and resource allocation
+- **ResearchAgent**: Focused on information gathering, web search, and data analysis
+
+#### Agent Features
+- **Autonomous Execution**: Agents can execute commands without user approval
+- **Task Delegation**: Intelligent routing of tasks to the most suitable agent
+- **Shared Context**: All agents share the same context and knowledge base
+- **Concurrent Operations**: Multiple agents can work simultaneously
+- **Extensible Design**: Easy to add new specialized agents
+
+#### Agent Commands
+```bash
+/agents                    # List all available agents
+/agent code_agent         # Get code agent capabilities
+/delegate analyze this code # AI selects best agent automatically
+/ask_agent how should I structure this project? # Direct agent query
+```
+
+### Security Architecture (macOS)
+
+KOTA includes a comprehensive security framework designed for macOS:
+
+#### Security Layers
+- **macOS Seatbelt Sandboxing**: Process isolation using sandbox-exec
+- **Policy Engine**: Regex-based command filtering with customizable rules
+- **Approval System**: Interactive user prompts with risk assessment
+- **Command Classification**: Autonomous vs approval-required command detection
+
+#### Security Features
+- **Three Sandbox Profiles**: Minimal, development, and read-only modes
+- **Policy-Based Filtering**: Allow/deny rules with pattern matching
+- **Risk Assessment**: Automatic evaluation of command safety
+- **Configuration-Driven**: TOML-based security policies and settings
 
 ### Quality Standards
 - **Zero Clippy Warnings**: Passes `cargo clippy -- -D warnings` with no issues
-- **Comprehensive Testing**: 63+ tests covering all core functionality including security features
-- **Dead Code Elimination**: No unused code, methods, or dependencies (framework code uses `#[allow(dead_code)]`)
+- **Comprehensive Testing**: 63+ tests covering all core functionality including TUI, agents, and security
+- **Dead Code Elimination**: No unused code (framework code uses `#[allow(dead_code)]` for future features)
 - **Memory Safety**: Safe async patterns with proper mutex handling
 - **Error Handling**: Robust error handling with `anyhow` throughout
-- **Zero Tolerance Policy**: No warnings or errors in compilation or tests
+- **Professional Display**: Strict content boundaries prevent UI corruption
 
 ### Knowledge Base & Memory System
 
@@ -256,9 +293,9 @@ KOTA automatically maintains a persistent knowledge base that enhances every int
 - **Context Integration**: Past knowledge automatically informs current conversations
 
 #### Manual Commands
-- `:memory` - View recent conversation summaries and learning
-- `:search <query>` - Search across stored knowledge for specific topics
-- `:learn <topic>: <content>` - Add specific insights or information to the knowledge base
+- `/memory` - View recent conversation summaries and learning
+- `/search <query>` - Search across stored knowledge for specific topics
+- `/learn <topic>: <content>` - Add specific insights or information to the knowledge base
 
 #### Knowledge Structure
 ```
@@ -268,26 +305,6 @@ knowledge-base/
 ├── systems/           # Tools, workflows, technical knowledge
 └── core/             # Conversation management, partnerships
 ```
-
-### Multi-Agent Architecture
-
-KOTA is designed with infrastructure ready for advanced multi-agent capabilities:
-
-- **Command Delegation**: Structured system for distributing tasks to specialized agents
-- **Shared Context**: Enhanced context management supporting multi-agent coordination
-- **Message Passing**: Infrastructure for agent-to-agent communication
-- **Concurrent LLM Support**: ModelConfig system supports multiple simultaneous connections
-- **Extensible Design**: Modular architecture ready for coding, research, planning, and other specialized agents
-
-### Security Architecture (macOS)
-
-KOTA includes a comprehensive security framework designed for macOS:
-
-- **macOS Seatbelt Sandboxing**: Process isolation using sandbox-exec
-- **Policy Engine**: Regex-based command filtering with customizable rules
-- **Approval System**: Interactive user prompts with risk assessment
-- **Secure Command Execution**: Three-layer security (sandbox + policy + approval)
-- **Configuration-Driven**: TOML-based security policies and settings
 
 ## Development
 
@@ -345,6 +362,7 @@ Switch providers in both TUI and CLI:
 ### Prompts Configuration
 Customize KOTA's behavior by editing `prompts.toml`:
 - System prompts and instructions
+- Autonomous command access permissions
 - Commit message generation templates
 - Command execution guidelines
 - Search/Replace format specifications
@@ -376,6 +394,18 @@ KOTA includes a comprehensive security framework:
 - [ ] Create MCP server framework for rapid adapter development
 - [ ] Document MCP server creation patterns and best practices
 - [ ] Build example implementations for common data sources
+
+### Advanced Agent Features
+- [ ] Agent learning and adaptation system
+- [ ] Cross-agent communication protocols
+- [ ] Task queue and priority management
+- [ ] Agent performance monitoring and metrics
+
+### Enhanced Security Features
+- [ ] Windows and Linux security framework support
+- [ ] Advanced threat detection and prevention
+- [ ] Security audit logging and compliance
+- [ ] Integration with external security tools
 
 ## License
 

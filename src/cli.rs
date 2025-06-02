@@ -33,6 +33,7 @@ pub async fn run_classic_cli(_context_manager: ContextManager, _model_config: Mo
     // Initialize secure executor
     let mut secure_executor = SecureExecutor::new(ApprovalMode::Policy);
     secure_executor.set_context_manager(shared_context.clone());
+    secure_executor.set_model_config(std::sync::Arc::new(tokio::sync::Mutex::new(model_config.clone())));
     
     // Show provider status and check API key
     show_provider_status(&model_config);
@@ -204,11 +205,86 @@ async fn handle_sr_blocks(response: &str, context_manager: &ContextManager) -> R
     Ok(())
 }
 
+fn is_autonomous_command(command: &str) -> bool {
+    let cmd = command.trim();
+    
+    // Agent commands (autonomous)
+    if cmd.starts_with("/agents") || 
+       cmd.starts_with("/agent ") ||
+       cmd.starts_with("/delegate ") ||
+       cmd.starts_with("/ask_agent ") {
+        return true;
+    }
+    
+    // Security commands (autonomous)
+    if cmd.starts_with("/security") ||
+       cmd.starts_with("/sandbox ") ||
+       cmd.starts_with("/approval ") {
+        return true;
+    }
+    
+    // Memory commands (autonomous) 
+    if cmd.starts_with("/memory") ||
+       cmd.starts_with("/search ") ||
+       cmd.starts_with("/learn ") {
+        return true;
+    }
+    
+    // File management commands (autonomous)
+    if cmd.starts_with("/add_file ") ||
+       cmd.starts_with("/add_snippet ") ||
+       cmd.starts_with("/show_context") ||
+       cmd.starts_with("/clear_context") {
+        return true;
+    }
+    
+    // Restricted commands (require user approval)
+    if cmd.starts_with("/config") ||
+       cmd.starts_with("/provider ") ||
+       cmd.starts_with("/model ") {
+        return false;
+    }
+    
+    // All other commands require approval by default
+    false
+}
+
 async fn handle_command_blocks(response: &str, context_manager: &mut ContextManager, secure_executor: &SecureExecutor) -> Result<()> {
     let command_blocks = cmd_parser::parse_command_blocks(response)?;
-    if !command_blocks.is_empty() {
-        println!("\n{}", "The AI suggested the following commands:".yellow().bold());
-        for (i, cmd_block) in command_blocks.iter().enumerate() {
+    if command_blocks.is_empty() {
+        return Ok(());
+    }
+    
+    // Separate autonomous commands from those requiring approval
+    let (autonomous_commands, approval_commands): (Vec<_>, Vec<_>) = 
+        command_blocks.iter().partition(|cmd| is_autonomous_command(&cmd.command));
+    
+    // Execute autonomous commands immediately
+    if !autonomous_commands.is_empty() {
+        println!("\n{}", "Executing autonomous AI commands:".green().bold());
+        for cmd_block in &autonomous_commands {
+            println!("🤖 {}", cmd_block.command.bright_cyan());
+            match secure_executor.execute_command_block(cmd_block).await {
+                Ok(output) => {
+                    if !output.trim().is_empty() {
+                        println!("{}", output);
+                    }
+                    // Add command output to context for potential follow-up
+                    context_manager.add_snippet(format!("Autonomous execution of '{}': \n{}", cmd_block.command, output));
+                }
+                Err(e) => {
+                    eprintln!("Autonomous execution failed: {}", e);
+                    // Add error to context as well
+                    context_manager.add_snippet(format!("Autonomous execution error for '{}': {}", cmd_block.command, e));
+                }
+            }
+        }
+    }
+    
+    // Handle commands requiring approval
+    if !approval_commands.is_empty() {
+        println!("\n{}", "The AI suggested the following commands that require approval:".yellow().bold());
+        for (i, cmd_block) in approval_commands.iter().enumerate() {
             println!("{}. {}", i + 1, cmd_block.command.bright_cyan());
         }
         
@@ -219,20 +295,20 @@ async fn handle_command_blocks(response: &str, context_manager: &mut ContextMana
         let user_response = user_response.trim().to_lowercase();
         
         if user_response == "y" || user_response == "yes" || user_response == "a" || user_response == "all" {
-            for cmd_block in &command_blocks {
-                println!("\n{} {}", "Executing securely:".green().bold(), cmd_block.command);
+            for cmd_block in &approval_commands {
+                println!("\n{} {}", "Executing with approval:".green().bold(), cmd_block.command);
                 match secure_executor.execute_command_block(cmd_block).await {
                     Ok(output) => {
                         if !output.trim().is_empty() {
                             println!("{}", output);
                         }
                         // Add command output to context for potential follow-up
-                        context_manager.add_snippet(format!("Secure execution of '{}': \n{}", cmd_block.command, output));
+                        context_manager.add_snippet(format!("Approved execution of '{}': \n{}", cmd_block.command, output));
                     }
                     Err(e) => {
-                        eprintln!("Secure execution failed: {}", e);
+                        eprintln!("Approved execution failed: {}", e);
                         // Add error to context as well
-                        context_manager.add_snippet(format!("Secure execution error for '{}': {}", cmd_block.command, e));
+                        context_manager.add_snippet(format!("Approved execution error for '{}': {}", cmd_block.command, e));
                     }
                 }
             }
@@ -240,6 +316,7 @@ async fn handle_command_blocks(response: &str, context_manager: &mut ContextMana
             std::process::exit(0);
         }
     }
+    
     Ok(())
 }
 

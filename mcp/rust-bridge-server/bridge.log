@@ -1,0 +1,328 @@
+[32m INFO[0m Starting KOTA Rust Bridge Server v0.1.0
+[32m INFO[0m Server IP Address: 192.168.86.20
+[32m INFO[0m Configuration loaded:
+[32m INFO[0m   Mac Pro Host: 100.118.223.57
+[32m INFO[0m   Rust Port: 8081
+[32m INFO[0m   Queue Polling: false
+[32m INFO[0m Communication logger initialized
+[32m INFO[0m Testing connection to Mac Pro bridge server...
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(14483456), "heapUsed": Number(13489984), "rss": Number(67649536)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:46:13.990Z"), "uptime": Number(3293.548269667), "version": String("1.0.0")}
+[32m INFO[0m ✅ Successfully connected to Mac Pro bridge server at http://100.118.223.57:8080
+[32m INFO[0m Queue polling disabled
+[32m INFO[0m 🚀 KOTA Rust Bridge Server is running!
+[32m INFO[0m    HTTP Server: http://0.0.0.0:8081
+[32m INFO[0m    Health Check: http://0.0.0.0:8081/health
+[32m INFO[0m    Discovery: http://0.0.0.0:8081/discovery
+[32m INFO[0m Starting HTTP server on port 8081
+[32m INFO[0m Rust Bridge Server listening on port 8081
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(14483456), "heapUsed": Number(13527640), "rss": Number(67649536)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:46:13.996Z"), "uptime": Number(3293.554538583), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[33m WARN[0m Authentication failed for request to /api/system-status
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m KOTA MCP: Sending knowledge - category: test
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(14745600), "heapUsed": Number(13478152), "rss": Number(67518464)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:47:14.004Z"), "uptime": Number(3353.56313275), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(15007744), "heapUsed": Number(13473256), "rss": Number(69222400)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:48:14.000Z"), "uptime": Number(3413.559478583), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(15007744), "heapUsed": Number(13949312), "rss": Number(69730304)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:49:14.005Z"), "uptime": Number(3473.565106792), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(15269888), "heapUsed": Number(13688424), "rss": Number(69517312)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:50:14.003Z"), "uptime": Number(3533.56316775), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(15269888), "heapUsed": Number(14131536), "rss": Number(70008832)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:51:14.003Z"), "uptime": Number(3593.563833583), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(16318464), "heapUsed": Number(13902248), "rss": Number(70909952)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:52:14.004Z"), "uptime": Number(3653.564542333), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(16318464), "heapUsed": Number(14378440), "rss": Number(71368704)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:53:14.005Z"), "uptime": Number(3713.566326292), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(15269888), "heapUsed": Number(14262328), "rss": Number(70664192)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:54:13.999Z"), "uptime": Number(3773.560035667), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(15532032), "heapUsed": Number(14011688), "rss": Number(70057984)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:55:13.997Z"), "uptime": Number(3833.558529208), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(15532032), "heapUsed": Number(14713160), "rss": Number(70582272)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:56:13.998Z"), "uptime": Number(3893.560508708), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(16056320), "heapUsed": Number(14487768), "rss": Number(70434816)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:57:13.998Z"), "uptime": Number(3953.560745667), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(57579), "external": Number(2282412), "heapTotal": Number(16056320), "heapUsed": Number(14930400), "rss": Number(70893568)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:58:14.032Z"), "uptime": Number(4013.575308458), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(65771), "external": Number(2290604), "heapTotal": Number(16056320), "heapUsed": Number(14794104), "rss": Number(70762496)}, "status": String("healthy"), "timestamp": String("2025-06-01T23:59:14.019Z"), "uptime": Number(4073.562668333), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(65771), "external": Number(2290604), "heapTotal": Number(17104896), "heapUsed": Number(14481160), "rss": Number(71598080)}, "status": String("healthy"), "timestamp": String("2025-06-02T00:00:14.013Z"), "uptime": Number(4133.556708083), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(65771), "external": Number(2290604), "heapTotal": Number(17104896), "heapUsed": Number(14956320), "rss": Number(72089600)}, "status": String("healthy"), "timestamp": String("2025-06-02T00:01:14.016Z"), "uptime": Number(4193.558885542), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(65771), "external": Number(2290799), "heapTotal": Number(16318464), "heapUsed": Number(14875984), "rss": Number(71581696)}, "status": String("healthy"), "timestamp": String("2025-06-02T00:02:14.019Z"), "uptime": Number(4253.562030625), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(65771), "external": Number(2290799), "heapTotal": Number(16318464), "heapUsed": Number(15314168), "rss": Number(72744960)}, "status": String("healthy"), "timestamp": String("2025-06-02T00:03:14.010Z"), "uptime": Number(4313.553574708), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(65771), "external": Number(2290604), "heapTotal": Number(16580608), "heapUsed": Number(15069312), "rss": Number(72335360)}, "status": String("healthy"), "timestamp": String("2025-06-02T00:04:14.013Z"), "uptime": Number(4373.556211625), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(65771), "external": Number(2290604), "heapTotal": Number(16580608), "heapUsed": Number(15800360), "rss": Number(72810496)}, "status": String("healthy"), "timestamp": String("2025-06-02T00:05:14.015Z"), "uptime": Number(4433.55849025), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(65966), "external": Number(2290799), "heapTotal": Number(17104896), "heapUsed": Number(15573984), "rss": Number(72679424)}, "status": String("healthy"), "timestamp": String("2025-06-02T00:06:14.017Z"), "uptime": Number(4493.560751917), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Mac Pro connection test successful: Object {"memory": Object {"arrayBuffers": Number(65966), "external": Number(2290799), "heapTotal": Number(17104896), "heapUsed": Number(16049040), "rss": Number(73875456)}, "status": String("healthy"), "timestamp": String("2025-06-02T00:07:14.012Z"), "uptime": Number(4553.555142167), "version": String("1.0.0")}
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge
+[32m INFO[0m Logged outbound http_request communication: rust-bridge-server -> mac-pro-bridge

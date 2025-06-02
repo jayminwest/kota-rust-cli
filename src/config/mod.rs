@@ -277,6 +277,7 @@ impl KotaConfig {
     }
     
     /// Merge with command-line overrides
+    #[allow(dead_code)]
     pub fn merge_overrides(&mut self, overrides: Vec<(String, String)>) -> Result<()> {
         for (key, value) in overrides {
             match key.as_str() {
@@ -293,6 +294,7 @@ impl KotaConfig {
 }
 
 /// Load or create configuration
+#[allow(dead_code)]
 pub fn load_or_create_config(path: Option<&Path>) -> Result<KotaConfig> {
     let config_path = if let Some(p) = path {
         p.to_path_buf()

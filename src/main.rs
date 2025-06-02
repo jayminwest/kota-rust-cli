@@ -18,6 +18,7 @@ mod cli;
 mod agents;
 mod security;
 mod config;
+mod bridge;
 
 use context::ContextManager;
 use llm::ModelConfig;

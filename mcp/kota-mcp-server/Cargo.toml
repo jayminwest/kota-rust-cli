@@ -1,0 +1,40 @@
+[package]
+name = "kota-mcp-server"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "kota-mcp-server"
+path = "src/main.rs"
+
+[dependencies]
+# Core async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# JSON-RPC and MCP
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Utilities
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# HTTP client for bridge communication
+reqwest = { version = "0.12", features = ["json"] }
+
+# Environment variables
+dotenv = "0.15"
+
+# File system operations
+tokio-util = { version = "0.7", features = ["io"] }
+
+# Stdio transport
+futures = "0.3"

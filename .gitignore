@@ -6,3 +6,19 @@ knowledge-base/
 
 # Configuration files that may contain sensitive data
 .kota/
+
+# Session data and temporary files
+sessions/
+context/
+*.session
+*.context
+
+# Environment and secret files
+.env.*
+*.key
+*.pem
+secrets.toml
+
+# IDE and editor files that might contain sensitive data
+.vscode/settings.json
+.idea/workspace.xml

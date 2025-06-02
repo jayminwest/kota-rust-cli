@@ -1,0 +1,209 @@
+[
+  {
+    "id": "e4653a27-3731-4009-9aaf-9ad01ae29daf",
+    "timestamp": "2025-06-01T23:59:14.042618Z",
+    "direction": "outbound",
+    "record_type": "http_request",
+    "tool_name": null,
+    "endpoint": "/api/messages/pending",
+    "method": "GET",
+    "request_data": {},
+    "response_data": {
+      "error": "Invalid token"
+    },
+    "success": false,
+    "error_message": null,
+    "metadata": {
+      "source": "rust-bridge-server",
+      "destination": "mac-pro-bridge",
+      "protocol": "http",
+      "size_bytes": 2,
+      "duration_ms": 4,
+      "http_status": 403
+    }
+  },
+  {
+    "id": "0963b279-49d9-4342-a233-44b3662c2af1",
+    "timestamp": "2025-06-01T23:59:24.025658Z",
+    "direction": "outbound",
+    "record_type": "http_request",
+    "tool_name": null,
+    "endpoint": "/api/outbound/queue",
+    "method": "GET",
+    "request_data": {},
+    "response_data": {
+      "error": "Invalid token"
+    },
+    "success": false,
+    "error_message": null,
+    "metadata": {
+      "source": "rust-bridge-server",
+      "destination": "mac-pro-bridge",
+      "protocol": "http",
+      "size_bytes": 2,
+      "duration_ms": 11,
+      "http_status": 403
+    }
+  },
+  {
+    "id": "15cac053-77a8-4c8f-8af6-2acdc5d120ee",
+    "timestamp": "2025-06-01T23:59:24.037364Z",
+    "direction": "outbound",
+    "record_type": "http_request",
+    "tool_name": null,
+    "endpoint": "/api/messages/pending",
+    "method": "GET",
+    "request_data": {},
+    "response_data": {
+      "error": "Invalid token"
+    },
+    "success": false,
+    "error_message": null,
+    "metadata": {
+      "source": "rust-bridge-server",
+      "destination": "mac-pro-bridge",
+      "protocol": "http",
+      "size_bytes": 2,
+      "duration_ms": 4,
+      "http_status": 403
+    }
+  },
+  {
+    "id": "7d10b075-8ca5-476b-8ab5-a0065e22b549",
+    "timestamp": "2025-06-01T23:59:34.025208Z",
+    "direction": "outbound",
+    "record_type": "http_request",
+    "tool_name": null,
+    "endpoint": "/api/outbound/queue",
+    "method": "GET",
+    "request_data": {},
+    "response_data": {
+      "error": "Invalid token"
+    },
+    "success": false,
+    "error_message": null,
+    "metadata": {
+      "source": "rust-bridge-server",
+      "destination": "mac-pro-bridge",
+      "protocol": "http",
+      "size_bytes": 2,
+      "duration_ms": 21,
+      "http_status": 403
+    }
+  },
+  {
+    "id": "4ba37ca6-2581-43a0-b5cb-7a66e5f58782",
+    "timestamp": "2025-06-01T23:59:34.047402Z",
+    "direction": "outbound",
+    "record_type": "http_request",
+    "tool_name": null,
+    "endpoint": "/api/messages/pending",
+    "method": "GET",
+    "request_data": {},
+    "response_data": {
+      "error": "Invalid token"
+    },
+    "success": false,
+    "error_message": null,
+    "metadata": {
+      "source": "rust-bridge-server",
+      "destination": "mac-pro-bridge",
+      "protocol": "http",
+      "size_bytes": 2,
+      "duration_ms": 13,
+      "http_status": 403
+    }
+  },
+  {
+    "id": "2532c1ae-e4ab-47e8-9858-474d6cce7242",
+    "timestamp": "2025-06-01T23:59:44.024976Z",
+    "direction": "outbound",
+    "record_type": "http_request",
+    "tool_name": null,
+    "endpoint": "/api/outbound/queue",
+    "method": "GET",
+    "request_data": {},
+    "response_data": {
+      "error": "Invalid token"
+    },
+    "success": false,
+    "error_message": null,
+    "metadata": {
+      "source": "rust-bridge-server",
+      "destination": "mac-pro-bridge",
+      "protocol": "http",
+      "size_bytes": 2,
+      "duration_ms": 13,
+      "http_status": 403
+    }
+  },
+  {
+    "id": "a30467a4-bc2d-4d13-8562-0aa7aca70171",
+    "timestamp": "2025-06-01T23:59:44.038886Z",
+    "direction": "outbound",
+    "record_type": "http_request",
+    "tool_name": null,
+    "endpoint": "/api/messages/pending",
+    "method": "GET",
+    "request_data": {},
+    "response_data": {
+      "error": "Invalid token"
+    },
+    "success": false,
+    "error_message": null,
+    "metadata": {
+      "source": "rust-bridge-server",
+      "destination": "mac-pro-bridge",
+      "protocol": "http",
+      "size_bytes": 2,
+      "duration_ms": 4,
+      "http_status": 403
+    }
+  },
+  {
+    "id": "1b8dbb77-2470-4b15-b7c8-31236d828a46",
+    "timestamp": "2025-06-01T23:59:54.025784Z",
+    "direction": "outbound",
+    "record_type": "http_request",
+    "tool_name": null,
+    "endpoint": "/api/outbound/queue",
+    "method": "GET",
+    "request_data": {},
+    "response_data": {
+      "error": "Invalid token"
+    },
+    "success": false,
+    "error_message": null,
+    "metadata": {
+      "source": "rust-bridge-server",
+      "destination": "mac-pro-bridge",
+      "protocol": "http",
+      "size_bytes": 2,
+      "duration_ms": 9,
+      "http_status": 403
+    }
+  },
+  {
+    "id": "08bb4e08-fd25-47c7-99c6-567cfe81f42c",
+    "timestamp": "2025-06-01T23:59:54.036548Z",
+    "direction": "outbound",
+    "record_type": "http_request",
+    "tool_name": null,
+    "endpoint": "/api/messages/pending",
+    "method": "GET",
+    "request_data": {},
+    "response_data": {
+      "error": "Invalid token"
+    },
+    "success": false,
+    "error_message": null,
+    "metadata": {
+      "source": "rust-bridge-server",
+      "destination": "mac-pro-bridge",
+      "protocol": "http",
+      "size_bytes": 2,
+      "duration_ms": 4,
+      "http_status": 403
+    }
+  }
+]

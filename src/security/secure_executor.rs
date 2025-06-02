@@ -7,6 +7,8 @@ use colored::*;
 
 use crate::cmd_parser::CommandBlock;
 use crate::context::ContextManager;
+use crate::commands::{CommandRegistry, CommandResult};
+use crate::llm::ModelConfig;
 use super::{SandboxProfile, SandboxedCommand, PolicyEngine, ApprovalSystem, ApprovalRequest, ApprovalMode};
 
 /// Secure command executor that integrates sandboxing, policy, and approval
@@ -15,6 +17,8 @@ pub struct SecureExecutor {
     approval_system: Arc<Mutex<ApprovalSystem>>,
     default_sandbox: SandboxProfile,
     context_manager: Option<Arc<Mutex<ContextManager>>>,
+    command_registry: Arc<CommandRegistry>,
+    model_config: Arc<Mutex<ModelConfig>>,
 }
 
 impl SecureExecutor {
@@ -24,12 +28,19 @@ impl SecureExecutor {
             approval_system: Arc::new(Mutex::new(ApprovalSystem::new(approval_mode))),
             default_sandbox: SandboxProfile::development(),
             context_manager: None,
+            command_registry: Arc::new(CommandRegistry::new()),
+            model_config: Arc::new(Mutex::new(ModelConfig::default())),
         }
     }
     
     /// Set the context manager for adding command output
     pub fn set_context_manager(&mut self, cm: Arc<Mutex<ContextManager>>) {
         self.context_manager = Some(cm);
+    }
+    
+    /// Set the model configuration
+    pub fn set_model_config(&mut self, mc: Arc<Mutex<ModelConfig>>) {
+        self.model_config = mc;
     }
     
     /// Set the default sandbox profile
@@ -39,8 +50,15 @@ impl SecureExecutor {
     
     /// Execute a command block securely
     pub async fn execute_command_block(&self, block: &CommandBlock) -> Result<String> {
-        // Parse the command
-        let (command, args) = self.parse_command(&block.command)?;
+        let command_str = &block.command;
+        
+        // Check if this is an internal KOTA command (starts with /)
+        if command_str.trim().starts_with('/') {
+            return self.execute_internal_command(command_str).await;
+        }
+        
+        // Parse the command for external shell commands
+        let (command, args) = self.parse_command(command_str)?;
         
         // Check policy
         let policy_decision = {
@@ -77,6 +95,40 @@ impl SecureExecutor {
         let output = self.execute_sandboxed(&command, args).await?;
         
         Ok(output)
+    }
+    
+    /// Execute internal KOTA commands
+    async fn execute_internal_command(&self, command_str: &str) -> Result<String> {
+        let parts: Vec<&str> = command_str.splitn(2, ' ').collect();
+        let command = parts[0];
+        let arg = if parts.len() > 1 { parts[1] } else { "" };
+        
+        // Get context manager and model config
+        let context_manager = self.context_manager.as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Context manager not set"))?;
+        let mut context = context_manager.lock().await;
+        let mut model_config = self.model_config.lock().await;
+        
+        // Execute the command using the registry
+        match self.command_registry.execute(command, arg, &mut context, &mut model_config)? {
+            Some(CommandResult { success: true, output, .. }) => {
+                if !output.trim().is_empty() {
+                    println!("{}", output);
+                }
+                Ok(output)
+            }
+            Some(CommandResult { success: false, error: Some(error), .. }) => {
+                let error_msg = format!("Command failed: {}", error);
+                println!("{} {}", "✗".red(), error_msg.red());
+                Err(anyhow::anyhow!(error_msg))
+            }
+            None => {
+                let error_msg = format!("Unknown command: {}", command);
+                println!("{} {}", "✗".red(), error_msg.red());
+                Err(anyhow::anyhow!(error_msg))
+            }
+            _ => Ok(String::new())
+        }
     }
     
     /// Parse command string into command and arguments

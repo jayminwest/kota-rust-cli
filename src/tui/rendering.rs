@@ -346,53 +346,104 @@ async fn run_app<B: Backend>(
 }
 
 fn ui(f: &mut Frame, app: &App) {
+    // Ensure we have minimum terminal size to prevent display issues
+    let area = f.area();
+    if area.width < 80 || area.height < 24 {
+        // Display a minimal warning for small terminals
+        let warning = widgets::create_small_terminal_warning();
+        f.render_widget(warning, area);
+        return;
+    }
+    
+    // Calculate dynamic input area height based on content
+    let input_height = if app.input_lines.len() > 1 {
+        std::cmp::min(5, app.input_lines.len() as u16 + 2) // Max 5 lines for input
+    } else {
+        3
+    };
+    
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Header
-            Constraint::Min(10),    // Main area
-            Constraint::Length(3),  // Input
-            Constraint::Length(1),  // Status bar
+            Constraint::Length(3),              // Header (fixed)
+            Constraint::Min(15),                // Main area (flexible, minimum 15 lines)
+            Constraint::Length(input_height),   // Input (dynamic height)
+            Constraint::Length(1),              // Status bar (fixed)
         ])
-        .split(f.area());
+        .split(area);
     
     // Header
     let header = widgets::create_header(app);
     f.render_widget(header, chunks[0]);
     
-    // Main area - split horizontally
-    let main_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(if app.show_file_browser { 20 } else { 0 }),
-            Constraint::Percentage(if app.show_file_browser { 50 } else { 60 }),
-            Constraint::Percentage(if app.show_file_browser { 30 } else { 40 }),
-        ])
-        .split(chunks[1]);
+    // Main area - split horizontally with strict constraints
+    let main_chunks = if app.show_file_browser {
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(24),     // File browser (fixed width, reduced)
+                Constraint::Min(40),        // Chat/terminal (flexible middle, smaller min)  
+                Constraint::Length(28),     // Context (fixed width, reduced)
+            ])
+            .split(chunks[1])
+    } else {
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Min(45),        // Chat/terminal (larger when no file browser)
+                Constraint::Length(28),     // Context (fixed width, reduced)
+            ])
+            .split(chunks[1])
+    };
     
-    // File browser (always visible in TUI mode)
-    let file_browser = widgets::create_file_browser(app);
-    f.render_widget(file_browser, main_chunks[0]);
-    
-    // Chat/terminal area
-    let chat_area_idx = if app.show_file_browser { 1 } else { 0 };
-    let chat_terminal_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-        .split(main_chunks[chat_area_idx]);
-    
-    // Chat history
-    let chat = widgets::create_chat_view(app);
-    f.render_widget(chat, chat_terminal_chunks[0]);
-    
-    // Terminal output
-    let terminal = widgets::create_terminal_view(app);
-    f.render_widget(terminal, chat_terminal_chunks[1]);
-    
-    // Context view
-    let context_idx = if app.show_file_browser { 2 } else { 1 };
-    let context = widgets::create_context_view(app);
-    f.render_widget(context, main_chunks[context_idx]);
+    // Render components based on layout
+    if app.show_file_browser {
+        // File browser
+        let file_browser = widgets::create_file_browser(app);
+        f.render_widget(file_browser, main_chunks[0]);
+        
+        // Chat/terminal area (split vertically with better constraints)
+        let chat_terminal_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(60), // Chat (60% of available space)
+                Constraint::Percentage(40), // Terminal (40% of available space)
+            ])
+            .split(main_chunks[1]);
+        
+        // Chat history
+        let chat = widgets::create_chat_view(app);
+        f.render_widget(chat, chat_terminal_chunks[0]);
+        
+        // Terminal output
+        let terminal = widgets::create_terminal_view(app);
+        f.render_widget(terminal, chat_terminal_chunks[1]);
+        
+        // Context view
+        let context = widgets::create_context_view(app);
+        f.render_widget(context, main_chunks[2]);
+    } else {
+        // Chat/terminal area (split vertically) - no file browser
+        let chat_terminal_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(60), // Chat (60% of available space)
+                Constraint::Percentage(40), // Terminal (40% of available space)
+            ])
+            .split(main_chunks[0]);
+        
+        // Chat history
+        let chat = widgets::create_chat_view(app);
+        f.render_widget(chat, chat_terminal_chunks[0]);
+        
+        // Terminal output
+        let terminal = widgets::create_terminal_view(app);
+        f.render_widget(terminal, chat_terminal_chunks[1]);
+        
+        // Context view
+        let context = widgets::create_context_view(app);
+        f.render_widget(context, main_chunks[1]);
+    }
     
     // Input area
     let input = widgets::create_input_area(app);

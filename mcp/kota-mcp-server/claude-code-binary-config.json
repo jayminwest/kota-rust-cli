@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "kota-bridge": {
+      "command": "/Users/jayminwest/Projects/kota-rust-cli/mcp/kota-mcp-server/target/release/kota-mcp-server",
+      "env": {
+        "BRIDGE_HOST": "localhost",
+        "BRIDGE_PORT": "8080", 
+        "BRIDGE_SECRET": "kota-bridge-secret-2025",
+        "RUST_LOG": "info"
+      }
+    }
+  }
+}

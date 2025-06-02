@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "kota-bridge": {
+      "command": "cargo",
+      "args": [
+        "run",
+        "--manifest-path",
+        "/Users/jayminwest/Projects/kota-rust-cli/mcp/kota-mcp-server/Cargo.toml",
+        "--bin",
+        "kota-mcp-server"
+      ],
+      "cwd": "/Users/jayminwest/Projects/kota-rust-cli/mcp/kota-mcp-server",
+      "env": {
+        "BRIDGE_HOST": "localhost",
+        "BRIDGE_PORT": "8081",
+        "BRIDGE_SECRET": "kota-bridge-secret-2025",
+        "RUST_LOG": "info"
+      }
+    }
+  }
+}

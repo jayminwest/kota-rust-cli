@@ -2,6 +2,49 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL PRIVACY AND SECURITY NOTICE
+
+**This is a PUBLIC repository that users will clone and use with their personal and sensitive data.**
+
+### Data Privacy Requirements
+
+KOTA users will inevitably work with:
+- **Personal code projects** containing proprietary algorithms and business logic
+- **API keys and credentials** for various services  
+- **Private conversations** with AI models about sensitive topics
+- **Personal knowledge bases** including career, financial, and private information
+- **Company codebases** and confidential project details
+- **Development secrets** and configuration data
+
+### Mandatory Privacy Protections
+
+When developing KOTA, you MUST:
+
+1. **Never commit sensitive data**: All personal data, API keys, conversations, and user-specific content MUST remain local-only
+2. **Verify .gitignore coverage**: Always ensure sensitive directories like `knowledge-base/`, `.kota/`, and session data are properly excluded
+3. **Default to private**: Any new feature that stores user data must default to local storage with explicit gitignore protection
+4. **Test privacy boundaries**: Before committing changes, verify no personal data could accidentally leak into the public repository
+5. **Document data flows**: Clearly document what data is stored where and how privacy is maintained
+
+### Protected Directories
+
+These directories MUST NEVER be committed to git:
+- `knowledge-base/` - Personal knowledge base with private conversations and learning
+- `.kota/` - Configuration directory that may contain API keys and personal settings
+- `sessions/` - Session data with conversation history
+- `context/` - Temporary context files that may contain sensitive code
+- `*.env` - Environment files with API keys and secrets
+
+### Privacy-First Development
+
+Remember: Every KOTA user trusts this tool with their most sensitive development work. A single privacy breach could expose:
+- Trade secrets and proprietary code
+- Personal API keys worth thousands of dollars
+- Private conversations about career and business strategies
+- Confidential client information and projects
+
+**Privacy is not optional - it's fundamental to KOTA's trustworthiness as a cognitive partner.**
+
 ## Philosophy of the KOTA Rust CLI Tool
 
 ### Core Purpose: A Cognitive Partner in Code and Knowledge Work
@@ -30,10 +73,11 @@ When developing and modifying KOTA, adhere to these principles:
 - While user-directed, the tool should strive for increasing levels of autonomy. It should be able to break down complex tasks into manageable sub-steps and execute them with minimal intervention.
 - This is supported by a structured internal command system, allowing it to discover and orchestrate its own functionalities.
 - Command outputs are automatically added to context, enabling informed follow-up actions.
+- **Autonomous Command Execution**: KOTA can automatically execute agent, security, and memory commands without user approval, while configuration commands require user permission.
 
 #### 4. Robustness and Resilience
 - To operate effectively, especially in autonomous modes, the tool must be robust. This includes sophisticated error handling (both internal and from external services like LLMs), retry mechanisms for transient issues, and clear diagnostics.
-- Timeout configurations (360 seconds for Gemini, 120 for Ollama) prevent hanging on slow responses.
+- Timeout configurations (240 seconds for Claude, 360 for Gemini, 120 for Ollama) prevent hanging on slow responses.
 
 #### 5. Modularity and Extensibility
 - The architecture should be modular, allowing for the incremental addition of new features and capabilities. A well-defined internal command system and clear separation of concerns (e.g., AI interaction, file operations, configuration) will facilitate this.
@@ -50,7 +94,7 @@ When developing and modifying KOTA, adhere to these principles:
 - In the fast-paced AI ecosystem where models improve weekly and new tools emerge daily, KOTA must be able to adapt at the speed of innovation.
 - This is achieved through:
   - **Self-modification**: Ability to update its own code to integrate new capabilities
-  - **Modular architecture**: Easy swapping of LLM providers (Gemini/Ollama) and addition of new ones
+  - **Modular architecture**: Easy swapping of LLM providers (Claude/Anthropic, Gemini, Ollama) and addition of new ones
   - **Configuration-driven behavior**: `prompts.toml` allows instant behavior changes without recompilation
   - **Model agnostic design**: Support for multiple models with easy addition of new ones
 - The goal is to prevent KOTA from becoming obsolete as the AI landscape evolves, ensuring it can always leverage the latest advancements in language models, tools, and techniques.
@@ -79,12 +123,12 @@ This philosophy emphasizes a journey towards a tool that is not merely reactive 
 
 ### Building and Running
 - `cargo build` - Compile the project
-- `cargo run` - Build and run the CLI application
-- `cargo test` - Run all tests
+- `cargo run` - Build and run the CLI application (TUI mode by default)
+- `cargo test` - Run all 63+ comprehensive tests
 - `cargo check` - Fast compile check without producing executables
 
 ### Development Commands
-- `cargo clippy` - Lint the codebase for common issues
+- `cargo clippy -- -D warnings` - Lint the codebase with zero-tolerance for warnings
 - `cargo fmt` - Format code according to Rust style guidelines
 
 ## Architecture
@@ -94,7 +138,8 @@ KOTA is an advanced interactive Rust CLI that integrates with multiple LLM provi
 ### Core Components
 
 **LLM Integration** (`src/llm.rs`): Supports multiple LLM providers:
-- Google Gemini API (cloud): Default provider and model gemini-2.5-pro-preview-05-06
+- Anthropic Claude API (cloud): Default provider and model claude-sonnet-4-20250514 (Claude 4 Sonnet)
+- Google Gemini API (cloud): Alternative model gemini-2.5-pro-preview-05-06
 - Ollama API (local): Alternative model qwen3:8b at `http://localhost:11434/api/chat`
 Uses non-streaming APIs with proper error handling for connection issues and timeouts. Includes functionality to generate conventional commit messages using Gemini Flash (gemini-2.5-flash-preview-05-20) with fallback to Ollama, based on git diffs and user prompts.
 
@@ -120,16 +165,17 @@ command2
 
 **Prompts Configuration** (`src/prompts.rs`): Manages all system prompts and instructions via TOML configuration file. Provides configurable LLM behavior, commit message generation templates, and instruction customization without code changes.
 
-**Terminal User Interface** (`src/tui.rs`): Advanced TUI featuring:
+**Terminal User Interface** (`src/tui/`): Advanced modular TUI featuring:
 - **Multi-pane layout**: Chat history, terminal output, context view, and file browser
 - **Vim-style navigation**: Full hjkl navigation with arrow key alternatives
 - **Auto-scrolling chat**: Automatic scrolling with manual override and 'a' key toggle
-- **Enhanced command display**: Clear command suggestions with status indicators (⏸ ▶ ✓ ✗)
+- **Enhanced command display**: Clear command suggestions with status indicators
 - **Individual command execution**: Navigate commands with 'n'/'p', execute with 'x'
 - **Multi-line input support**: Smart detection of code blocks, brackets, and continuations
-- **Emoji-free design**: Clean text-based indicators ([D] directories, [L] symlinks)
+- **Professional design**: Clean text-based indicators and strict content boundaries
 - **Markdown rendering**: Enhanced display of headers, code blocks, and formatting
 - **Real-time updates**: Live data display (time, git branch, file counts, scroll mode)
+- **Responsive layout**: Automatic content scaling and truncation for stable display
 
 **File Browser** (`src/file_browser.rs`): Interactive file navigation with sudo support, permissions display, and context integration.
 
@@ -139,8 +185,29 @@ command2
 - **Automatic storage**: Conversations saved with timestamps in structured knowledge-base/
 - **Domain organization**: Content organized by topic areas (personal, projects, systems, etc.)
 - **Privacy protection**: Local-only storage with .gitignore protection
-- **Smart retrieval**: Commands for memory access (:memory, :search, :learn)
+- **Smart retrieval**: Commands for memory access (/memory, /search, /learn)
 - **Conversation summarization**: Automatic context summarization and storage
+
+**Multi-Agent Framework** (`src/agents/`): Complete agent system with working implementations:
+- **AgentManager**: Central coordination for all agents with task delegation and communication
+- **CodeAgent**: Specialized in code analysis, generation, and editing
+- **PlanningAgent**: Expert in task breakdown, project planning, and resource allocation
+- **ResearchAgent**: Focused on information gathering, web search, and data analysis
+- **Autonomous execution**: Agents can execute commands without user approval
+- **Shared context**: All agents access the same context and knowledge base
+
+**Security Framework** (`src/security/`): Comprehensive macOS-focused security system:
+- **Sandbox**: macOS Seatbelt sandboxing with multiple profiles (minimal, development, read-only)
+- **Policy Engine**: Regex-based command filtering with customizable allow/deny rules
+- **Approval System**: Interactive user prompts with risk assessment
+- **Secure Executor**: Three-layer security (sandbox + policy + approval)
+- **Configuration-driven**: TOML-based security policies and settings
+
+**Configuration System** (`src/config/`): TOML-based configuration management:
+- **Persistent settings**: Save and load configuration from files
+- **Runtime customization**: Change behavior without recompilation
+- **Security integration**: Configure approval modes and sandbox profiles
+- **LLM settings**: Provider selection and model configuration
 
 ### Application Flow
 
@@ -152,7 +219,7 @@ command2
 5. **Command Execution**: Focus terminal ('Tab' to cycle), press 'x' to execute suggested commands
 6. **File Operations**: Use file browser ('f' key) to add files to context
 7. **Context Management**: Real-time context display with file tracking
-8. **Visual Feedback**: Clean emoji-free design with text indicators
+8. **Visual Feedback**: Professional design with text indicators and content boundaries
 
 #### Classic Mode
 1. User enters commands (starting with `/`) or natural language prompts
@@ -166,7 +233,8 @@ command2
 - **Markdown Rendering**: Enhanced display of LLM responses with headers, code blocks, and formatting
 - **Context Integration**: Automatic context awareness and file access control
 - **Auto-commit**: Automatic git commits with LLM-generated messages after successful S/R applications
-- **Provider Switching**: Easy switching between Gemini and Ollama providers
+- **Provider Switching**: Easy switching between Claude, Gemini, and Ollama providers
+- **Autonomous Commands**: AI can automatically execute agent, security, and memory commands
 
 ### Available Commands
 
@@ -183,24 +251,44 @@ command2
 - **Ctrl+Q** - Quit application
 
 #### CLI Commands (Both Modes)
+
+**Context Management (Autonomous)**
 - `/add_file <path>` - Add file contents to context
 - `/add_snippet <text>` - Add text snippet to context  
 - `/show_context` - Display current context
 - `/clear_context` - Clear all context
+
+**Command Execution (Require Approval)**
 - `/run <command>` - Execute shell command
 - `/run_add <command>` - Execute shell command and add output to context
+
+**Git Operations (Require Approval)**
 - `/git_add <file>` - Stage file for commit
 - `/git_commit "<message>"` - Create git commit
 - `/git_status` - Show git status
 - `/git_diff [<path>]` - Show git diff
-- `/provider <ollama|gemini>` - Switch between LLM providers
+
+**Agent Commands (Autonomous)**
+- `/agents` - List all available agents
+- `/agent <name>` - Get details about specific agent
+- `/delegate <task>` - Delegate task to best agent
+- `/ask_agent <question>` - Ask question to agent
+
+**Security Commands (Autonomous)**
+- `/security [status]` - Show security system status
+- `/sandbox [profile]` - Configure sandbox profiles
+- `/approval [mode]` - Configure approval settings
+
+**Configuration Commands (Require Approval)**
+- `/provider <anthropic|gemini|ollama>` - Switch between LLM providers
+- `/config [show|save|load|reset]` - Manage configuration
 - `/help` - Show all available commands
 - `/quit` - Exit application
 
-#### Memory & Knowledge Base Commands
-- `:memory` - Show recent conversation summaries
-- `:search <query>` - Search knowledge base for specific topics
-- `:learn <topic>: <content>` - Add specific learning to knowledge base
+#### Memory & Knowledge Base Commands (Autonomous)
+- `/memory` - Show recent conversation summaries
+- `/search <query>` - Search knowledge base for specific topics
+- `/learn <topic>: <content>` - Add specific learning to knowledge base
 
 ### Keyboard Shortcuts
 
@@ -251,28 +339,6 @@ KOTA automatically detects when your input should continue on multiple lines and
 - **Enter** - Continues to next line when incomplete
 - **Ctrl+D** - Force completion of multiline input
 
-**Multi-line Input Area:**
-- **Visual feedback**: Input area expands to show all lines being composed
-- **Continuation prompts**: Clear `...` indicators for subsequent lines
-- **Smart completion**: Automatic detection when input is complete
-- **Force send**: Ctrl+D to send incomplete multi-line input
-
-**Examples:**
-```
-[I] Tell me about this function: {
-...   "name": "example",
-...   "params": ["a", "b"]
-... }
-
-[I] ```python
-... def hello():
-...     print("Hello, World!")
-... ```
-
-[I] This is a long prompt that \
-... continues on the next line
-```
-
 ### Prompts Configuration
 
 KOTA uses a `prompts.toml` file to store all system prompts and instructions. This allows easy customization of how KOTA behaves without modifying code.
@@ -280,8 +346,8 @@ KOTA uses a `prompts.toml` file to store all system prompts and instructions. Th
 **Configuration File**: `prompts.toml` (in project root)
 
 **Sections:**
-- `[system]` - Main LLM instructions and behavior
-- `[commit_generation]` - Commit message generation prompts for Gemini and Ollama
+- `[system]` - Main LLM instructions and behavior, including autonomous command access
+- `[commit_generation]` - Commit message generation prompts for different providers
 - `[search_replace]` - S/R block format reminders
 - `[commands]` - Command execution guidelines
 
@@ -310,17 +376,22 @@ When implementing self-modification features:
 
 ### Multi-Agent Architecture Foundation
 
-KOTA is designed with infrastructure ready for advanced multi-agent capabilities:
+KOTA includes a complete multi-agent system with working implementations:
 
-**Command System**: Structured command parsing and execution framework that can be extended for agent tool delegation
+**Agent System**: Structured agent management with specialized capabilities:
+- **AgentManager**: Central coordination for task delegation and agent communication
+- **CodeAgent**: Code analysis, generation, and editing capabilities
+- **PlanningAgent**: Task breakdown, project planning, and resource allocation
+- **ResearchAgent**: Information gathering, web search, and data analysis
 
-**Context Management**: Enhanced context system supporting multi-agent coordination and shared state
+**Agent Features**:
+- **Autonomous Execution**: Agents can execute commands without user approval
+- **Task Delegation**: Intelligent routing of tasks to the most suitable agent
+- **Shared Context**: All agents access the same context and knowledge base
+- **Concurrent Operations**: Multiple agents can work simultaneously
+- **Extensible Design**: Easy to add new specialized agents
 
-**Message Passing**: Infrastructure for agent-to-agent communication and task delegation
-
-**ModelConfig System**: Supports multiple concurrent LLM connections for different agent roles
-
-**Extensible Design**: Modular architecture ready for specialized agent implementations (coding, research, planning, etc.)
+**Command Integration**: Agent commands are fully integrated into both TUI and CLI modes with autonomous execution capability.
 
 ### Knowledge Base & Memory
 
@@ -345,10 +416,13 @@ KOTA automatically builds and maintains a persistent knowledge base:
 KOTA maintains the highest code quality standards with comprehensive testing and linting:
 
 - **Zero Clippy Warnings**: Passes `cargo clippy -- -D warnings` with no issues
-- **Comprehensive Testing**: 52+ tests covering all core functionality including new features
-- **Dead Code Elimination**: No unused code, methods, or dependencies
+- **Comprehensive Testing**: 63+ tests covering all core functionality including TUI, agents, and security
+- **Dead Code Elimination**: No unused code (framework modules use `#[allow(dead_code)]` for future features)
 - **Memory Safety**: Safe async patterns with proper mutex handling
 - **Error Handling**: Robust error handling with `anyhow` throughout
+- **Professional Display**: Strict content boundaries prevent UI corruption
+- **Privacy Protection**: All user data remains local-only with proper gitignore coverage
+- **Security by Design**: Default configurations prioritize user privacy and data protection
 
 ### Dependencies
 - `tokio` - Async runtime with process support
@@ -377,26 +451,37 @@ KOTA maintains the highest code quality standards with comprehensive testing and
 - Maintained backward compatibility with Gemini and Ollama providers
 - Added PartialEq derive to LlmProvider for testing support
 
-#### Security Framework Implementation (January 2025)
-- Added comprehensive macOS security framework with sandboxing, policy engine, and approval system
-- Implemented modular security components in `src/security/` directory
-- Created TOML-based configuration system in `src/config/`
-- Fixed policy engine bug where denied arguments weren't checked before allowed arguments
+#### Complete Framework Implementation (January 2025)
+- **Multi-Agent System**: Fully implemented and integrated agent framework with CodeAgent, PlanningAgent, ResearchAgent, and AgentManager
+- **Security Framework**: Complete macOS security system with sandboxing, policy engine, and approval system
+- **Configuration System**: TOML-based configuration management with persistence
+- **Autonomous Command Execution**: AI can automatically execute agent, security, and memory commands while requiring approval for configuration changes
+
+#### TUI Display Improvements (January 2025)
+- **Professional Layout**: Implemented strict content boundaries and responsive design
+- **Aggressive Content Limiting**: Multiple layers of truncation to prevent text bleeding between panes
+- **Layout Constraints**: Fixed pane widths with conservative space allocation
+- **Content Scaling**: Automatic truncation and overflow indicators for stable display
 
 #### Code Quality Improvements (January 2025)
 - Achieved zero tolerance policy: no warnings or errors in compilation or tests
-- Increased test coverage from 52 to 63 tests
-- Added `#[allow(dead_code)]` to framework modules (agents, security, config) for future use
-- Fixed all clippy warnings including manual flatten patterns and redundant imports
+- Increased test coverage from 52 to 63+ tests
+- Added `#[allow(dead_code)]` to framework modules for future features
+- Fixed all clippy warnings and implemented CommandRegistry thread safety
 
 #### TUI Modularization (December 2024)
-- Broke down monolithic 1,793-line tui.rs into modular components
+- Broke down monolithic tui.rs into modular components
 - Created tui/ subdirectory with app.rs, rendering.rs, types.rs, widgets.rs, and tests.rs
 - Improved maintainability and testability of TUI code
 
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
-We have a ZERO TOLERANCE policy for ALL warnings and dead code. Every line of code must be used and clean.
+## Important Instruction Reminders
+
+**Zero Tolerance Policy**: KOTA maintains a zero-tolerance policy for ALL warnings and dead code. Every line of code must be used and clean. Framework modules use `#[allow(dead_code)]` for future features.
+
+**File Safety**: Always prefer editing existing files to creating new ones. Never create documentation files unless explicitly requested.
+
+**Quality Standards**: All changes must pass `cargo clippy -- -D warnings` and `cargo test` with zero issues.
+
+**Architectural Integrity**: Maintain the modular architecture and ensure all new features integrate properly with existing systems.
+
+**Self-Modification**: Remember that KOTA can modify its own code - use exit code 123 after self-modifications to trigger rebuild via `run_kota.sh`.
