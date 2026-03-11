@@ -137,13 +137,13 @@ async fn ask_gemini_model(user_prompt: &str, context_str: &str, prompts_config: 
     // Wrap the API call with a timeout
     let response = timeout(
         Duration::from_secs(GEMINI_TIMEOUT_SECS),
-        ai.ask(session.ask_string(&full_prompt))
+        ai.ask(session.ask(full_prompt))
     )
     .await
     .map_err(|_| anyhow::anyhow!("Gemini API request timed out after {} seconds", GEMINI_TIMEOUT_SECS))?
     .map_err(|e| anyhow::anyhow!("Gemini API error: {}", e))?;
     
-    Ok(response.get_text(""))
+    Ok(response.get_chat().get_text_no_think(""))
 }
 
 async fn ask_anthropic_model(user_prompt: &str, context_str: &str, prompts_config: &PromptsConfig, model_name: &str) -> anyhow::Result<String> {
@@ -347,14 +347,14 @@ async fn generate_commit_message_gemini(original_prompt: &str, git_diff: &str, a
     // Wrap the API call with a timeout (use half the main timeout for commit messages)
     let response = timeout(
         Duration::from_secs(GEMINI_TIMEOUT_SECS / 2),
-        ai.ask(session.ask_string(&prompt))
+        ai.ask(session.ask(prompt))
     )
     .await
     .map_err(|_| anyhow::anyhow!("Gemini commit generation timed out after {} seconds", GEMINI_TIMEOUT_SECS / 2))?
     .map_err(|e| anyhow::anyhow!("Gemini commit generation error: {}", e))?;
     
     // Clean up the response (remove any extra whitespace/newlines)
-    let commit_message = response.get_text("").trim().to_string();
+    let commit_message = response.get_chat().get_text_no_think("").trim().to_string();
     
     Ok(commit_message)
 }
